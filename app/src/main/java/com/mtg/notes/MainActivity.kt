@@ -27,6 +27,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        runDemoNote()
+
     }
 }
 
