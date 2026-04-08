@@ -3,7 +3,6 @@ package com.mtg.notes
 enum class SortOption { BY_CREATED_DATE, BY_UPDATED_DATE }
 
 enum class Folder(val displayName: String) {
-    GENERAL("Загальні"),
     STUDY("Навчання"),
     WORK("Робота"),
     PERSONAL("Особисте"),
@@ -14,15 +13,19 @@ open class Note(
     val id: Int = generateNextId(),
     var title: String = "Без назви",
     var content: String,
-    val folder: Folder = Folder.GENERAL
+    val folder: Folder? = null
 ) {
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis() - (0..10000000).random() // Трохи рандому для дат
 
     var updatedAt: Long? = null  // Nullable
 
-    constructor(content: String) : this(title = "Без назви", content = content, folder = Folder.GENERAL)
+    constructor(content: String, folder: Folder? = null) : this(
+        title = content.lineSequence().firstOrNull { it.isNotBlank() } ?: "Без назви",
+        content = content,
+        folder = folder
+    )
 
-    companion object { // static метод
+    companion object {
         private var currentIdCounter = 1
         fun generateNextId(): Int {
             return currentIdCounter++
@@ -68,7 +71,6 @@ object NotesStorage {
     fun moveToTrash(noteId: Int) {
         val noteToTrash = activeNotes.find { it.id == noteId } // lambda func
 
-        // Розпакування Nullable за допомогою let
         noteToTrash?.let { note ->
             activeNotes.remove(note)
             val trashed = TrashedNote(note.id, note.title, note.content)
@@ -77,27 +79,23 @@ object NotesStorage {
         } ?: println("-> Помилка: Нотатку з ID $noteId не знайдено.")
     }
 
-    fun getActiveNotes(): List<Note> {  // lambda для сортування
+    fun getActiveNotes(): List<Note> {
         return when (sortOption) {
             SortOption.BY_CREATED_DATE -> activeNotes.sortedByDescending { it.createdAt }
             SortOption.BY_UPDATED_DATE -> activeNotes.sortedByDescending { it.updatedAt ?: it.createdAt }
         }
     }
 
-    // 1. Set (Унікальні папки)
     fun getActiveFolders(): Set<Folder> {
-        return activeNotes.map { it.folder }.toSet()
+        return activeNotes.mapNotNull { it.folder }.toSet()
     }
 
-    // 2. Map (Кількість нотаток у папці)
     fun getFolderCounts(): Map<Folder, Int> {
-        return activeNotes.groupBy { it.folder }.mapValues { it.value.size }
+        return activeNotes.mapNotNull { it.folder }.groupingBy { it }.eachCount()
     }
 
-    // 3. Фільтрація + Сортування
     fun getNotesFiltered(selectedFolder: Folder?): List<Note> {
         val filtered = if (selectedFolder == null) activeNotes else activeNotes.filter { it.folder == selectedFolder }
-
         return when (sortOption) {
             SortOption.BY_CREATED_DATE -> filtered.sortedByDescending { it.createdAt }
             SortOption.BY_UPDATED_DATE -> filtered.sortedByDescending { it.updatedAt ?: it.createdAt }
@@ -133,16 +131,6 @@ fun runDemoNote() {
     NotesStorage.addNote(autoSchoolNote)
     NotesStorage.addNote(fastNote)
 
-    println("\nРедагування нотатки")
-    autoSchoolNote.edit("Теорія для АШ", "Пасивна безпека. Активна - подушка")
-    autoSchoolNote.printForUi()
-
-    uniNote.edit("Понеділок: Вільний (лаби з мікросервісів 50+)")
-    uniNote.printForUi()
-
-    println("\nВидалення нотатки")
-    NotesStorage.moveToTrash(fastNote.id)
-
     println("\nАКТИВНІ НОТАТКИ (Сортування за датою оновлення)")
     NotesStorage.sortOption = SortOption.BY_UPDATED_DATE
     NotesStorage.getActiveNotes().forEach { it.printForUi() }
@@ -153,6 +141,10 @@ fun runDemoNote() {
         println("   До повного видалення: ${trashed.getDaysUntilPermanentDeletion()} днів")
     }
 
+    Thread.sleep(5000)
+
     println("\nСимуляція ніби редагую нотатку про аш")
+    autoSchoolNote.edit("Пассивна безпека: Ремінь, Підголівник")
     println(autoSchoolNote.content.charCountInfo())
+    autoSchoolNote.printForUi()
 }
