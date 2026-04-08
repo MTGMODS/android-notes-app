@@ -35,6 +35,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.*
 import com.mtg.notes.ui.theme.NotesTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,31 +69,77 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NotesAppScreen() {
+
+    var selectedFolder by remember { mutableStateOf<Folder?>(null) }
+    var currentSortOption by remember { mutableStateOf(NotesStorage.sortOption) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-//            .background(Color(0xFF000000))
             .background(MaterialTheme.colorScheme.background)
-            .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .padding(top = 48.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Text(
-                text = "Нотатки",
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Нотатки",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                IconButton(onClick = {
+                    currentSortOption = if (currentSortOption == SortOption.BY_CREATED_DATE) SortOption.BY_UPDATED_DATE else SortOption.BY_CREATED_DATE
+                    NotesStorage.sortOption = currentSortOption
+                }) {
+                    Icon(Icons.Default.Sort, contentDescription = "Сортування", tint = MaterialTheme.colorScheme.onBackground)
+                }
+            }
 
-            SearchBar()
+            Box(modifier = Modifier.padding(horizontal = 16.dp)) { SearchBar() }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            val notes = NotesStorage.getActiveNotes()
-            notes.forEach { note ->
-                NoteCard(note)
-                Spacer(modifier = Modifier.height(12.dp))
+            // LazyRow для Папок
+            val activeFolders = NotesStorage.getActiveFolders().toList()
+            val folderCounts = NotesStorage.getFolderCounts()
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    FolderChip(name = "Всі", count = NotesStorage.getActiveNotes().size, isSelected = selectedFolder == null) { selectedFolder = null }
+                }
+                items(activeFolders) { folder ->
+                    FolderChip(name = folder.displayName, count = folderCounts[folder] ?: 0, isSelected = selectedFolder == folder) { selectedFolder = folder }
+                }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // LazyVerticalGrid для Нотаток
+            val notesToShow = NotesStorage.getNotesFiltered(selectedFolder)
+
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 160.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(notesToShow) { note ->
+                    NoteCard(note)
+                }
+            }
+
         }
 
         FloatingActionButton(
@@ -95,6 +152,23 @@ fun NotesAppScreen() {
         ) {
             Icon(Icons.Default.Add, contentDescription = "Додати", tint = Color.Black)
         }
+    }
+}
+
+@Composable
+fun FolderChip(name: String, count: Int, isSelected: Boolean, onClick: () -> Unit) {
+    val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = "$name [$count]", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -126,18 +200,19 @@ fun SearchBar() {
 @Composable
 fun NoteCard(note: Note) {
     val formatter = SimpleDateFormat("dd MMMM", Locale("uk", "UA"))
-    val dateString = formatter.format(Date(note.createdAt))
+    val dateToDisplay = note.updatedAt ?: note.createdAt
+    val dateString = formatter.format(Date(dateToDisplay))
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .height(160.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp)
     ) {
         Text(
             text = note.title,
-//            color = Color.White,
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold

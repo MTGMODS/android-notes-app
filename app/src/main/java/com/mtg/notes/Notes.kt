@@ -2,12 +2,25 @@ package com.mtg.notes
 
 enum class SortOption { BY_CREATED_DATE, BY_UPDATED_DATE }
 
-open class Note(val id: Int = generateNextId(), var title: String = "Без назви", var content: String) {
+enum class Folder(val displayName: String) {
+    GENERAL("Загальні"),
+    STUDY("Навчання"),
+    WORK("Робота"),
+    PERSONAL("Особисте"),
+    IDEAS("Ідеї")
+}
+
+open class Note(
+    val id: Int = generateNextId(),
+    var title: String = "Без назви",
+    var content: String,
+    val folder: Folder = Folder.GENERAL
+) {
     val createdAt: Long = System.currentTimeMillis()
 
     var updatedAt: Long? = null  // Nullable
 
-    constructor(content: String) : this(title = "Без назви", content = content) // Перевантаження конструкторів
+    constructor(content: String) : this(title = "Без назви", content = content, folder = Folder.GENERAL)
 
     companion object { // static метод
         private var currentIdCounter = 1
@@ -71,6 +84,26 @@ object NotesStorage {
         }
     }
 
+    // 1. Set (Унікальні папки)
+    fun getActiveFolders(): Set<Folder> {
+        return activeNotes.map { it.folder }.toSet()
+    }
+
+    // 2. Map (Кількість нотаток у папці)
+    fun getFolderCounts(): Map<Folder, Int> {
+        return activeNotes.groupBy { it.folder }.mapValues { it.value.size }
+    }
+
+    // 3. Фільтрація + Сортування
+    fun getNotesFiltered(selectedFolder: Folder?): List<Note> {
+        val filtered = if (selectedFolder == null) activeNotes else activeNotes.filter { it.folder == selectedFolder }
+
+        return when (sortOption) {
+            SortOption.BY_CREATED_DATE -> filtered.sortedByDescending { it.createdAt }
+            SortOption.BY_UPDATED_DATE -> filtered.sortedByDescending { it.updatedAt ?: it.createdAt }
+        }
+    }
+
     fun getTrashedNotes(): List<TrashedNote> = trashBin
 }
 
@@ -88,21 +121,21 @@ fun TrashedNote.getDaysUntilPermanentDeletion(): Int { return 30 } //
 fun runDemoNote() {
     println("\nЗАПУСК ДОДАТКУ 'НОТАТКИ'\n")
 
-    val uniNote = Note(title = "Розклад універа", content = "Понеділок: Лаби мікросервіси Нікітін 8-103")
-    val autoShoolNote = Note(title = "АШ", content = "Пасивна безпека: ремінь, підголівкник")
+    val uniNote = Note(title = "Розклад універа", content = "Понеділок: Лаби мікросервіси Нікітін 8-103", folder = Folder.STUDY)
+    val autoSchoolNote = Note(title = "АШ", content = "Пасивна безпека: ремінь, підголівкник", folder = Folder.PERSONAL)
     val fastNote = Note("Купити чай по дорозі")
 
     uniNote.printForUi()
-    autoShoolNote.printForUi()
+    autoSchoolNote.printForUi()
     fastNote.printForUi()
 
     NotesStorage.addNote(uniNote)
-    NotesStorage.addNote(autoShoolNote)
+    NotesStorage.addNote(autoSchoolNote)
     NotesStorage.addNote(fastNote)
 
     println("\nРедагування нотатки")
-    autoShoolNote.edit("Теорія для АШ", "Пасивна безпека. Активна - подушка")
-    autoShoolNote.printForUi()
+    autoSchoolNote.edit("Теорія для АШ", "Пасивна безпека. Активна - подушка")
+    autoSchoolNote.printForUi()
 
     uniNote.edit("Понеділок: Вільний (лаби з мікросервісів 50+)")
     uniNote.printForUi()
@@ -121,5 +154,5 @@ fun runDemoNote() {
     }
 
     println("\nСимуляція ніби редагую нотатку про аш")
-    println(autoShoolNote.content.charCountInfo())
+    println(autoSchoolNote.content.charCountInfo())
 }
