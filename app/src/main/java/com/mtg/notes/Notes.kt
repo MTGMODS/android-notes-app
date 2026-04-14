@@ -1,5 +1,7 @@
 package com.mtg.notes
 
+import androidx.compose.runtime.mutableStateListOf
+
 enum class SortOption { BY_CREATED_DATE, BY_UPDATED_DATE }
 
 enum class Folder(val displayName: String) {
@@ -13,9 +15,9 @@ open class Note(
     val id: Int = generateNextId(),
     var title: String = "Без назви",
     var content: String,
-    val folder: Folder? = null
+    var folder: Folder? = null
 ) {
-    val createdAt: Long = System.currentTimeMillis() - (0..10000000).random() // Трохи рандому для дат
+    val createdAt: Long = System.currentTimeMillis() - (0..10000000).random() // Трохи рандому для демонстрації
 
     var updatedAt: Long? = null  // Nullable
 
@@ -59,8 +61,7 @@ class TrashedNote(id: Int, title: String, content: String, val deletedAt: Long =
 }
 
 object NotesStorage {
-    private val activeNotes = mutableListOf<Note>()
-    private val trashBin = mutableListOf<TrashedNote>()
+    private val activeNotes = mutableStateListOf<Note>()
 
     var sortOption: SortOption = SortOption.BY_CREATED_DATE
 
@@ -68,15 +69,8 @@ object NotesStorage {
         activeNotes.add(note)
     }
 
-    fun moveToTrash(noteId: Int) {
-        val noteToTrash = activeNotes.find { it.id == noteId } // lambda func
-
-        noteToTrash?.let { note ->
-            activeNotes.remove(note)
-            val trashed = TrashedNote(note.id, note.title, note.content)
-            trashBin.add(trashed)
-            println("-> Нотатку '${note.title}' переміщено в кошик.")
-        } ?: println("-> Помилка: Нотатку з ID $noteId не знайдено.")
+    fun deleteNote(note: Note) {
+        activeNotes.remove(note)
     }
 
     fun getActiveNotes(): List<Note> {
@@ -102,7 +96,6 @@ object NotesStorage {
         }
     }
 
-    fun getTrashedNotes(): List<TrashedNote> = trashBin
 }
 
 
@@ -114,37 +107,12 @@ fun Note.printForUi() {
     println("ID:${this.id} | ${this.title} | ${this.getPreviewText()} | $editStatus")
 }
 
-fun TrashedNote.getDaysUntilPermanentDeletion(): Int { return 30 } //
-
 fun runDemoNote() {
-    println("\nЗАПУСК ДОДАТКУ 'НОТАТКИ'\n")
-
     val uniNote = Note(title = "Розклад універа", content = "Понеділок: Лаби мікросервіси Нікітін 8-103", folder = Folder.STUDY)
     val autoSchoolNote = Note(title = "АШ", content = "Пасивна безпека: ремінь, підголівкник", folder = Folder.PERSONAL)
     val fastNote = Note("Купити чай по дорозі")
 
-    uniNote.printForUi()
-    autoSchoolNote.printForUi()
-    fastNote.printForUi()
-
     NotesStorage.addNote(uniNote)
     NotesStorage.addNote(autoSchoolNote)
     NotesStorage.addNote(fastNote)
-
-    println("\nАКТИВНІ НОТАТКИ (Сортування за датою оновлення)")
-    NotesStorage.sortOption = SortOption.BY_UPDATED_DATE
-    NotesStorage.getActiveNotes().forEach { it.printForUi() }
-
-    println("\n--- КОРЗИНА ---")
-    NotesStorage.getTrashedNotes().forEach { trashed ->
-        trashed.printForUi()
-        println("   До повного видалення: ${trashed.getDaysUntilPermanentDeletion()} днів")
-    }
-
-    Thread.sleep(5000)
-
-    println("\nСимуляція ніби редагую нотатку про аш")
-    autoSchoolNote.edit("Пассивна безпека: Ремінь, Підголівник")
-    println(autoSchoolNote.content.charCountInfo())
-    autoSchoolNote.printForUi()
 }
