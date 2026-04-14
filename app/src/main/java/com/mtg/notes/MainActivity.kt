@@ -584,7 +584,6 @@ fun NoteEditorOverlay(note: Note, onExit: () -> Unit) {
 
     var isDropdownExpanded by remember { mutableStateOf(false) }
 
-
     LaunchedEffect(title, content, currentFolder) {
         note.edit(title, content, currentFolder)
     }
