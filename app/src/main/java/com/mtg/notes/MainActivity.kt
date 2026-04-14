@@ -127,16 +127,12 @@ fun AppNavigation() {
             route = Screen.NoteDetails.route,
             arguments = listOf(navArgument("noteId") { type = NavType.IntType })
         ) { backStackEntry ->
-            // Отримуємо ID нотатки з маршруту
             val noteId = backStackEntry.arguments?.getInt("noteId") ?: -1
-            // Шукаємо цю нотатку в нашому сховищі
             val note = NotesStorage.getActiveNotes().find { it.id == noteId }
-
-            // Якщо знайшли — малюємо твій готовий редактор з 4-ї лаби
             if (note != null) {
                 NoteEditorOverlay(
                     note = note,
-                    onExit = { navController.popBackStack() } // Кнопка "Назад" тепер повертає на попередній екран
+                    onExit = { navController.popBackStack() }
                 )
             }
         }
