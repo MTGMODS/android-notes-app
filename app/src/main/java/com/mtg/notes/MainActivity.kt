@@ -60,13 +60,17 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
-
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.mtg.notes.ui.theme.NotesTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -79,7 +83,61 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NotesTheme {
-                NotesAppScreen()
+//                NotesAppScreen()
+                AppNavigation()
+            }
+        }
+
+    }
+}
+
+@Composable
+fun AppNavigation() {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = Screen.Onboarding.route) {
+
+        composable(Screen.Onboarding.route) { backStackEntry ->
+            val savedName by backStackEntry.savedStateHandle.getStateFlow("userName", "").collectAsState()
+
+            OnboardingScreen(
+                savedName = savedName,
+                onEnterNameClick = { navController.navigate(Screen.NameInput.route) },
+                onStartClick = { name ->
+                    navController.navigate(Screen.Main.createRoute(name)) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.NameInput.route) {
+            NameInputScreen(onSave = { name ->
+                navController.previousBackStackEntry?.savedStateHandle?.set("userName", name)
+                navController.popBackStack()
+            })
+        }
+
+        composable(Screen.Main.route) { backStackEntry ->
+            val userName = backStackEntry.arguments?.getString("userName") ?: "Гість"
+            MainTabScreen(userName = userName, globalNavController = navController)
+        }
+
+        composable(
+            route = Screen.NoteDetails.route,
+            arguments = listOf(navArgument("noteId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            // Отримуємо ID нотатки з маршруту
+            val noteId = backStackEntry.arguments?.getInt("noteId") ?: -1
+            // Шукаємо цю нотатку в нашому сховищі
+            val note = NotesStorage.getActiveNotes().find { it.id == noteId }
+
+            // Якщо знайшли — малюємо твій готовий редактор з 4-ї лаби
+            if (note != null) {
+                NoteEditorOverlay(
+                    note = note,
+                    onExit = { navController.popBackStack() } // Кнопка "Назад" тепер повертає на попередній екран
+                )
             }
         }
 
