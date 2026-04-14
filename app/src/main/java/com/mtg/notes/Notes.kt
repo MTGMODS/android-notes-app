@@ -2,8 +2,6 @@ package com.mtg.notes
 
 import androidx.compose.runtime.mutableStateListOf
 
-enum class SortOption { BY_CREATED_DATE, BY_UPDATED_DATE }
-
 enum class Folder(val displayName: String) {
     STUDY("Навчання"),
     WORK("Робота"),
@@ -47,8 +45,6 @@ open class Note(
 
 object NotesStorage {
     private val activeNotes = mutableStateListOf<Note>()
-
-    var sortOption: SortOption = SortOption.BY_CREATED_DATE
 
     fun addNote(note: Note) {
         activeNotes.add(note)
