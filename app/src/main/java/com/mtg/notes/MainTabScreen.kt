@@ -54,7 +54,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
     var folderNameInput by remember { mutableStateOf("") }
     var isFabExpanded by remember { mutableStateOf(false) }
 
-    // Оптимізована фільтрація
     val notesToShow by remember(selectedFolder, searchQuery, NotesStorage.getActiveNotes().size) {
         derivedStateOf {
             NotesStorage.getNotesFiltered(selectedFolder).filter { note ->
@@ -79,7 +78,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
             }
         },
         floatingActionButton = {
-            // Показуємо FAB тільки на вкладках "Список" і "Плитка"
             if (currentTab != BottomTab.PROFILE) {
                 Column(horizontalAlignment = Alignment.End) {
                     if (isFabExpanded) {
@@ -99,7 +97,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                                 isFabExpanded = false
                                 val newNote = Note("")
                                 NotesStorage.addNote(newNote)
-                                // 🚀 НАВІГАЦІЯ: Переходимо на редактор для нової нотатки
                                 globalNavController.navigate(Screen.NoteDetails.createRoute(newNote.id))
                             },
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -127,10 +124,8 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             when (currentTab) {
                 BottomTab.LIST, BottomTab.GRID -> {
-                    // 1. Додаємо statusBarsPadding(), щоб UI не ліз на годинник
                     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
 
-                        // 2. Повертаємо втрачений заголовок та бейдж
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -172,13 +167,11 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                             }
                         }
 
-                        // Рядок пошуку
                         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                             SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
                         }
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Папки
                         val activeFolders = NotesStorage.getActiveFolders().toList()
                         val folderCounts = NotesStorage.getFolderCounts()
                         if (showFolders) {
@@ -193,8 +186,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                                     } else if (currentTab == BottomTab.GRID) {
                                         FolderGridItem(name = "Всі", count = NotesStorage.getActiveNotes().size, isSelected = selectedFolder == null) { selectedFolder = null }
                                     }
-
-
                                 }
                                 items(activeFolders) { folder ->
                                     if (currentTab == BottomTab.LIST) {
@@ -206,7 +197,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-
                         if (NotesStorage.getActiveNotes().isEmpty()) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -218,7 +208,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                         } else {
                             if (currentTab == BottomTab.LIST) {
                                 LazyColumn(
-                                    // 3. Повертаємо відступ знизу (88.dp), щоб FAB не перекривав нотатки
                                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
@@ -233,7 +222,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                             } else {
                                 LazyVerticalGrid(
                                     columns = GridCells.Adaptive(minSize = 160.dp),
-                                    // 3. Відступ знизу для сітки
                                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
