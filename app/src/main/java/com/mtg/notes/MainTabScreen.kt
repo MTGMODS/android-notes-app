@@ -167,11 +167,6 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                             }
                         }
 
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-
                         val activeFolders = NotesStorage.getActiveFolders().toList()
                         val folderCounts = NotesStorage.getFolderCounts()
                         if (showFolders) {
@@ -207,6 +202,11 @@ fun MainTabScreen(userName: String, globalNavController: NavController) {
                             }
                         } else {
                             if (currentTab == BottomTab.LIST) {
+                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+
                                 LazyColumn(
                                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
