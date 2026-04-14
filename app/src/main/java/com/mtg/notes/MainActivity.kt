@@ -3,6 +3,7 @@ package com.mtg.notes
 import androidx.activity.enableEdgeToEdge
 import android.os.Bundle
 import android.text.format.DateUtils
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -65,6 +66,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import com.mtg.notes.ui.theme.NotesTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -86,6 +88,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NotesAppScreen() {
+
+    val context = LocalContext.current
 
     var isLoading by remember { mutableStateOf(true) }
 
@@ -372,7 +376,7 @@ fun NotesAppScreen() {
                 },
                 confirmButton = {
                     TextButton(onClick = {
-
+                        Toast.makeText(context, "Симуляція нової папки: $folderNameInput", Toast.LENGTH_SHORT).show()
                         folderNameInput = ""
                         showFolderDialog = false
                     }) { Text("Створити папку") }
@@ -582,8 +586,7 @@ fun NoteEditorOverlay(note: Note, onExit: () -> Unit) {
 
 
     LaunchedEffect(title, content, currentFolder) {
-        note.edit(title, content)
-        note.folder = currentFolder
+        note.edit(title, content, currentFolder)
     }
 
     Column(

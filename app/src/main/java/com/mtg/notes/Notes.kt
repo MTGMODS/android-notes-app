@@ -37,9 +37,10 @@ open class Note(
         this.updatedAt = System.currentTimeMillis()
     }
 
-    open fun edit(newTitle: String, newContent: String) {
+    open fun edit(newTitle: String, newContent: String, newFolder: Folder?) {
         this.title = newTitle
         this.content = newContent
+        this.folder = newFolder
         this.updatedAt = System.currentTimeMillis()
     }
 
