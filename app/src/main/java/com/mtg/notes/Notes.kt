@@ -17,9 +17,7 @@ open class Note(
     var content: String,
     var folder: Folder? = null
 ) {
-    val createdAt: Long = System.currentTimeMillis() - (0..10000000).random() // Трохи рандому для демонстрації
-
-    var updatedAt: Long? = null  // Nullable
+    var updatedAt: Long = System.currentTimeMillis()
 
     constructor(content: String, folder: Folder? = null) : this(
         title = content.lineSequence().firstOrNull { it.isNotBlank() } ?: "Без назви",
@@ -49,15 +47,6 @@ open class Note(
         return if (content.length > 25) content.substring(0, 25) + "..." else content
     }
 
-    fun clearContent() {
-        this.content = ""
-    }
-}
-
-class TrashedNote(id: Int, title: String, content: String, val deletedAt: Long = System.currentTimeMillis()) : Note(id = id, title = title, content = content) {
-    override fun getPreviewText(): String {
-        return "🗑 [КОШИК] " + super.getPreviewText()
-    }
 }
 
 object NotesStorage {
@@ -74,10 +63,7 @@ object NotesStorage {
     }
 
     fun getActiveNotes(): List<Note> {
-        return when (sortOption) {
-            SortOption.BY_CREATED_DATE -> activeNotes.sortedByDescending { it.createdAt }
-            SortOption.BY_UPDATED_DATE -> activeNotes.sortedByDescending { it.updatedAt ?: it.createdAt }
-        }
+        return activeNotes
     }
 
     fun getActiveFolders(): Set<Folder> {
@@ -90,29 +76,7 @@ object NotesStorage {
 
     fun getNotesFiltered(selectedFolder: Folder?): List<Note> {
         val filtered = if (selectedFolder == null) activeNotes else activeNotes.filter { it.folder == selectedFolder }
-        return when (sortOption) {
-            SortOption.BY_CREATED_DATE -> filtered.sortedByDescending { it.createdAt }
-            SortOption.BY_UPDATED_DATE -> filtered.sortedByDescending { it.updatedAt ?: it.createdAt }
-        }
+        return filtered.sortedByDescending { it.updatedAt }
     }
 
-}
-
-
-fun String.charCountInfo(): String = "Символів введено: ${this.length}"
-
-
-fun Note.printForUi() {
-    val editStatus = this.updatedAt?.let { "Змінено ${this.updatedAt}" } ?: "Створено ${this.createdAt}"
-    println("ID:${this.id} | ${this.title} | ${this.getPreviewText()} | $editStatus")
-}
-
-fun runDemoNote() {
-    val uniNote = Note(title = "Розклад універа", content = "Понеділок: Лаби мікросервіси Нікітін 8-103", folder = Folder.STUDY)
-    val autoSchoolNote = Note(title = "АШ", content = "Пасивна безпека: ремінь, підголівкник", folder = Folder.PERSONAL)
-    val fastNote = Note("Купити чай по дорозі")
-
-    NotesStorage.addNote(uniNote)
-    NotesStorage.addNote(autoSchoolNote)
-    NotesStorage.addNote(fastNote)
 }

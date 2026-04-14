@@ -104,7 +104,6 @@ fun NotesAppScreen() {
     var isFabExpanded by remember { mutableStateOf(false) }
 
     var showFolderDialog by remember { mutableStateOf(false) }
-    var currentSortOption by remember { mutableStateOf(NotesStorage.sortOption) }
     var editingNote by remember { mutableStateOf<Note?>(null) }
     var folderNameInput by remember { mutableStateOf("") }
 
@@ -256,10 +255,12 @@ fun NotesAppScreen() {
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    val notesToShow by remember(selectedFolder, currentSortOption, searchQuery, NotesStorage.getActiveNotes().size) {
+                    val notesToShow by remember(selectedFolder, searchQuery, NotesStorage.getActiveNotes().size) {
                         derivedStateOf {
                             NotesStorage.getNotesFiltered(selectedFolder).filter { note ->
-                                searchQuery.isEmpty() || note.title.contains(searchQuery, ignoreCase = true) || note.content.contains(searchQuery, ignoreCase = true)
+                                searchQuery.isEmpty()
+                                        || note.title.contains(searchQuery, ignoreCase = true)
+                                        || note.content.contains(searchQuery, ignoreCase = true)
                             }
                         }
                     }
@@ -469,11 +470,10 @@ fun FolderGridItem(name: String, count: Int, isSelected: Boolean, onClick: () ->
 
 @Composable
 fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
-    val dateToDisplay = note.updatedAt ?: note.createdAt
-    val dateString = if (DateUtils.isToday(dateToDisplay)) {
-        SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(dateToDisplay))
+    val dateString = if (DateUtils.isToday(note.updatedAt)) {
+        SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(note.updatedAt))
     } else {
-        SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(dateToDisplay))
+        SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(note.updatedAt))
     }
 
     Column(
@@ -528,11 +528,10 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
 
 @Composable
 fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
-    val dateToDisplay = note.updatedAt ?: note.createdAt
-    val dateString = if (DateUtils.isToday(dateToDisplay)) {
-        SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(dateToDisplay))
+    val dateString = if (DateUtils.isToday(note.updatedAt)) {
+        SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(note.updatedAt))
     } else {
-        SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(dateToDisplay))
+        SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(note.updatedAt))
     }
 
     Row(
