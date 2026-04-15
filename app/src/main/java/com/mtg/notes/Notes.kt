@@ -42,33 +42,3 @@ open class Note(
     }
 
 }
-
-object NotesStorage {
-    private val activeNotes = mutableStateListOf<Note>()
-
-    fun addNote(note: Note) {
-        activeNotes.add(note)
-    }
-
-    fun deleteNote(note: Note) {
-        activeNotes.remove(note)
-    }
-
-    fun getActiveNotes(): List<Note> {
-        return activeNotes
-    }
-
-    fun getActiveFolders(): Set<Folder> {
-        return activeNotes.mapNotNull { it.folder }.toSet()
-    }
-
-    fun getFolderCounts(): Map<Folder, Int> {
-        return activeNotes.mapNotNull { it.folder }.groupingBy { it }.eachCount()
-    }
-
-    fun getNotesFiltered(selectedFolder: Folder?): List<Note> {
-        val filtered = if (selectedFolder == null) activeNotes else activeNotes.filter { it.folder == selectedFolder }
-        return filtered.sortedByDescending { it.updatedAt }
-    }
-
-}
