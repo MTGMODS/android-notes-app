@@ -21,12 +21,12 @@ class MainViewModel : ViewModel() {
     private val _isSortAscending = MutableStateFlow(true)
     val isSortAscending: StateFlow<Boolean> = _isSortAscending.asStateFlow()
 
-    private val _allNotes = MutableStateFlow(repository.getAllNotes())
+    private val _refreshTrigger = MutableStateFlow(0)
 
     val notesToShow: StateFlow<List<Note>> = combine(
-        _allNotes, _searchQuery, _selectedFolder, _isSortAscending
-    ) { notes, query, folder, sortAsc ->
-        var filtered = notes
+        _refreshTrigger, _searchQuery, _selectedFolder, _isSortAscending
+    ) { _, query, folder, sortAsc ->
+        var filtered = repository.getAllNotes()
 
         if (folder != null) filtered = filtered.filter { it.folder == folder }
         if (query.isNotEmpty()) {
@@ -38,13 +38,17 @@ class MainViewModel : ViewModel() {
         if (sortAsc) filtered.sortedBy { it.title } else filtered.sortedByDescending { it.title }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val activeFolders: StateFlow<Set<Folder>> = _allNotes
-        .map { notes -> notes.mapNotNull { it.folder }.toSet() }
+    val activeFolders: StateFlow<Set<Folder>> = _refreshTrigger
+        .map { repository.getAllNotes().mapNotNull { it.folder }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    val folderCounts: StateFlow<Map<Folder, Int>> = _allNotes
-        .map { notes -> notes.mapNotNull { it.folder }.groupingBy { it }.eachCount() }
+    val folderCounts: StateFlow<Map<Folder, Int>> = _refreshTrigger
+        .map { repository.getAllNotes().mapNotNull { it.folder }.groupingBy { it }.eachCount() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val totalNotesCount: StateFlow<Int> = _refreshTrigger
+        .map { repository.getAllNotes().size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     init {
         loadData()
@@ -60,7 +64,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun refreshNotes() {
-        _allNotes.value = repository.getAllNotes()
+        _refreshTrigger.value += 1
     }
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }

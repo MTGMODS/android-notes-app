@@ -86,7 +86,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NotesTheme {
-//                NotesAppScreen()
                 AppNavigation()
             }
         }
@@ -98,11 +97,13 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation() {
     val navController = rememberNavController()
 
+    val mainViewModel: MainViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
+
     NavHost(navController = navController, startDestination = Screen.Onboarding.route) {
 
         composable(Screen.Onboarding.route) { backStackEntry ->
             val savedName by backStackEntry.savedStateHandle.getStateFlow("userName", "").collectAsState()
-
             OnboardingScreen(
                 savedName = savedName,
                 onEnterNameClick = { navController.navigate(Screen.NameInput.route) },
@@ -123,7 +124,12 @@ fun AppNavigation() {
 
         composable(Screen.Main.route) { backStackEntry ->
             val userName = backStackEntry.arguments?.getString("userName") ?: "Гість"
-            MainTabScreen(userName = userName, globalNavController = navController)
+            MainTabScreen(
+                userName = userName,
+                globalNavController = navController,
+                mainViewModel = mainViewModel,
+                profileViewModel = profileViewModel
+            )
         }
 
         composable(
@@ -133,7 +139,10 @@ fun AppNavigation() {
             val noteId = backStackEntry.arguments?.getInt("noteId") ?: -1
             NoteEditorOverlay(
                 noteId = noteId,
-                onExit = { navController.popBackStack() }
+                onExit = {
+                    mainViewModel.refreshNotes()
+                    navController.popBackStack()
+                }
             )
         }
 

@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -52,6 +53,8 @@ fun MainTabScreen(
     val isSortAscending by mainViewModel.isSortAscending.collectAsStateWithLifecycle()
     val activeFolders by mainViewModel.activeFolders.collectAsStateWithLifecycle()
     val folderCounts by mainViewModel.folderCounts.collectAsStateWithLifecycle()
+    val totalNotesCount by mainViewModel.totalNotesCount.collectAsStateWithLifecycle()
+
 
     val currentUserName by profileViewModel.userName.collectAsStateWithLifecycle()
 
@@ -59,12 +62,14 @@ fun MainTabScreen(
         profileViewModel.setInitialNameIfNeeded(userName)
     }
 
-    var currentTab by remember { mutableStateOf(BottomTab.LIST) }
+    var currentTab by rememberSaveable { mutableStateOf(BottomTab.LIST) }
+    var showFolders by rememberSaveable { mutableStateOf(true) }
+
     var isFabExpanded by remember { mutableStateOf(false) }
-    var showFolderDialog by remember { mutableStateOf(false) }
-    var folderNameInput by remember { mutableStateOf("") }
     var noteToDelete by remember { mutableStateOf<Note?>(null) }
 
+    var showFolderDialog by remember { mutableStateOf(false) }
+    var folderNameInput by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     Scaffold(
@@ -105,6 +110,7 @@ fun MainTabScreen(
                     BottomTab.LIST -> {
                         ListTabContent(
                             notes = notesToShow,
+                            totalNotesCount = totalNotesCount,
                             searchQuery = searchQuery,
                             onQueryChange = { mainViewModel.updateSearchQuery(it) },
                             folders = activeFolders,
@@ -112,12 +118,18 @@ fun MainTabScreen(
                             selectedFolder = selectedFolder,
                             onFolderSelect = { mainViewModel.selectFolder(it) },
                             onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                            onDeleteRequest = { noteToDelete = it }
+                            onDeleteRequest = { noteToDelete = it },
+                            showFolders = showFolders,
+                            onToggleFolders = {
+                                showFolders = !showFolders
+                                if (!showFolders) mainViewModel.selectFolder(null) // Скидаємо фільтр, якщо ховаємо папки
+                            }
                         )
                     }
                     BottomTab.GRID -> {
                         GridTabContent(
                             notes = notesToShow,
+                            totalNotesCount = totalNotesCount,
                             folders = activeFolders,
                             counts = folderCounts,
                             selectedFolder = selectedFolder,
@@ -125,7 +137,12 @@ fun MainTabScreen(
                             onToggleSort = { mainViewModel.toggleSortOrder() },
                             onFolderSelect = { mainViewModel.selectFolder(it) },
                             onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                            onDeleteRequest = { noteToDelete = it }
+                            onDeleteRequest = { noteToDelete = it },
+                            showFolders = showFolders,
+                            onToggleFolders = {
+                                showFolders = !showFolders
+                                if (!showFolders) mainViewModel.selectFolder(null)
+                            }
                         )
                     }
                     BottomTab.PROFILE -> {
@@ -150,6 +167,33 @@ fun MainTabScreen(
         )
     }
 
+    if (showFolderDialog) {
+        AlertDialog(
+            onDismissRequest = { showFolderDialog = false },
+            title = { Text("Нова папка") },
+            text = {
+                OutlinedTextField(
+                    value = folderNameInput,
+                    onValueChange = { folderNameInput = it },
+                    singleLine = true,
+                    placeholder = { Text("Назва папки") }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    Toast.makeText(context, "Симуляція нової папки: $folderNameInput", Toast.LENGTH_SHORT).show()
+                    folderNameInput = ""
+                    showFolderDialog = false
+                }) { Text("Створити") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    folderNameInput = ""
+                    showFolderDialog = false
+                }) { Text("Відміна") }
+            }
+        )
+    }
 
 }
 
@@ -199,6 +243,7 @@ fun MainFab(
 @Composable
 fun ListTabContent(
     notes: List<Note>,
+    totalNotesCount: Int,
     searchQuery: String,
     onQueryChange: (String) -> Unit,
     folders: Set<Folder>,
@@ -206,29 +251,45 @@ fun ListTabContent(
     selectedFolder: Folder?,
     onFolderSelect: (Folder?) -> Unit,
     onNoteClick: (Note) -> Unit,
-    onDeleteRequest: (Note) -> Unit
+    onDeleteRequest: (Note) -> Unit,
+    showFolders: Boolean,
+    onToggleFolders: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        NotesHeader(showLimitBadge = notes.size > 5)
+        NotesHeader(
+            showLimitBadge = totalNotesCount > 5,
+            showFolders = showFolders,
+            onToggleFolders = onToggleFolders
+        )
 
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
             SearchBar(query = searchQuery, onQueryChange = onQueryChange)
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            item {
-                FolderListItem(name = "Всі", count = notes.size, isSelected = selectedFolder == null) { onFolderSelect(null) }
+        if (showFolders) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    FolderListItem(
+                        name = "Всі",
+                        count = totalNotesCount,
+                        isSelected = selectedFolder == null
+                    ) { onFolderSelect(null) }
+                }
+                items(folders.toList()) { folder ->
+                    FolderListItem(
+                        name = folder.displayName,
+                        count = counts[folder] ?: 0,
+                        isSelected = selectedFolder == folder
+                    ) { onFolderSelect(folder) }
+                }
             }
-            items(folders.toList()) { folder ->
-                FolderListItem(name = folder.displayName, count = counts[folder] ?: 0, isSelected = selectedFolder == folder) { onFolderSelect(folder) }
-            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
         if (notes.isEmpty()) {
             EmptyNotesPlaceholder()
@@ -248,6 +309,7 @@ fun ListTabContent(
 @Composable
 fun GridTabContent(
     notes: List<Note>,
+    totalNotesCount: Int,
     folders: Set<Folder>,
     counts: Map<Folder, Int>,
     selectedFolder: Folder?,
@@ -255,7 +317,9 @@ fun GridTabContent(
     onToggleSort: () -> Unit,
     onFolderSelect: (Folder?) -> Unit,
     onNoteClick: (Note) -> Unit,
-    onDeleteRequest: (Note) -> Unit
+    onDeleteRequest: (Note) -> Unit,
+    showFolders: Boolean,
+    onToggleFolders: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -265,31 +329,46 @@ fun GridTabContent(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, fontSize = 32.sp, fontWeight = FontWeight.Medium)
-                if (notes.size > 5) {
+                if (totalNotesCount > 5) {
                     Spacer(Modifier.width(8.dp))
                     Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                         Text("Ліміт", color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(4.dp))
                     }
                 }
             }
-            IconButton(onClick = onToggleSort) {
-                Icon(Icons.Default.SortByAlpha, contentDescription = "Сортування", tint = if(isSortAsc) MaterialTheme.colorScheme.primary else Color.Gray)
+            Row {
+                IconButton(onClick = onToggleFolders) {
+                    Icon(Icons.Default.Folder, contentDescription = "Папки", tint = if(showFolders) MaterialTheme.colorScheme.primary else Color.Gray)
+                }
+                IconButton(onClick = onToggleSort) {
+                    Icon(Icons.Default.SortByAlpha, contentDescription = "Сортування", tint = if(isSortAsc) MaterialTheme.colorScheme.primary else Color.Gray)
+                }
             }
         }
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            item {
-                FolderGridItem(name = "Всі", count = notes.size, isSelected = selectedFolder == null) { onFolderSelect(null) }
+        if (showFolders) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    FolderGridItem(
+                        name = "Всі",
+                        count = totalNotesCount,
+                        isSelected = selectedFolder == null
+                    ) { onFolderSelect(null) }
+                }
+                items(folders.toList()) { folder ->
+                    FolderGridItem(
+                        name = folder.displayName,
+                        count = counts[folder] ?: 0,
+                        isSelected = selectedFolder == folder
+                    ) { onFolderSelect(folder) }
+                }
             }
-            items(folders.toList()) { folder ->
-                FolderGridItem(name = folder.displayName, count = counts[folder] ?: 0, isSelected = selectedFolder == folder) { onFolderSelect(folder) }
-            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
         if (notes.isEmpty()) {
             EmptyNotesPlaceholder()
@@ -309,17 +388,27 @@ fun GridTabContent(
 }
 
 @Composable
-fun NotesHeader(showLimitBadge: Boolean) {
+fun NotesHeader(showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, fontSize = 32.sp, fontWeight = FontWeight.Medium)
-        if (showLimitBadge) {
-            Spacer(Modifier.width(8.dp))
-            Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                Text("Ліміт", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, fontSize = 32.sp, fontWeight = FontWeight.Medium)
+            if (showLimitBadge) {
+                Spacer(Modifier.width(8.dp))
+                Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                    Text("Ліміт", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
             }
+        }
+        IconButton(onClick = onToggleFolders) {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = "Папки",
+                tint = if (showFolders) MaterialTheme.colorScheme.primary else Color.Gray
+            )
         }
     }
 }

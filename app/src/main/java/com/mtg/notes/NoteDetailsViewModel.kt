@@ -28,7 +28,7 @@ class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
     private fun loadNote() {
         viewModelScope.launch {
             _uiState.value = NoteDetailsState.Loading
-            delay(500) // Імітація завантаження
+            delay(500)
 
             val note = repository.getNoteById(noteId)
             if (note != null) {
@@ -42,9 +42,16 @@ class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
     fun updateNote(title: String, content: String, folder: Folder?) {
         val currentState = _uiState.value
         if (currentState is NoteDetailsState.Success) {
-            val updatedNote = currentState.note
-            updatedNote.edit(title, content, folder)
+            val oldNote = currentState.note
+            val updatedNote = Note(
+                id = oldNote.id,
+                title = title,
+                content = content,
+                folder = folder
+            )
+            updatedNote.updatedAt = System.currentTimeMillis()
             repository.updateNote(updatedNote)
+            _uiState.value = NoteDetailsState.Success(updatedNote)
         }
     }
 
