@@ -15,34 +15,39 @@ fun OnboardingScreen(
     onEnterNameClick: () -> Unit,
     onStartClick: (String) -> Unit
 ) {
-    Column(
+    Surface(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        color = MaterialTheme.colorScheme.background
     ) {
-        Text(text = "📝", fontSize = 100.sp)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Notes App",
-            color = MaterialTheme.colorScheme.onBackground,
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
-        )
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        Button(onClick = onEnterNameClick) {
-            Text("Ввести ім'я")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = { onStartClick(savedName) },
-            enabled = savedName.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(if (savedName.isNotBlank()) "Привіт, $savedName! Розпочати" else "Розпочати")
+            Text(text = "📝", fontSize = 100.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Notes App",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Button(onClick = onEnterNameClick) {
+                Text("Ввести ім'я")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = { onStartClick(savedName) },
+                enabled = savedName.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text(if (savedName.isNotBlank()) "Привіт, $savedName! Розпочати" else "Розпочати")
+            }
         }
     }
 }
@@ -51,25 +56,30 @@ fun OnboardingScreen(
 fun NameInputScreen(onSave: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Ваше ім'я") },
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = { onSave(name) },
-            enabled = name.isNotBlank()
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text("Зберегти")
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Ваше ім'я") },
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { onSave(name) },
+                enabled = name.isNotBlank()
+            ) {
+                Text("Зберегти")
+            }
         }
     }
 }
