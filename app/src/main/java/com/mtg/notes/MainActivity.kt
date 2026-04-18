@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -66,6 +67,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -128,336 +131,9 @@ fun AppNavigation() {
             arguments = listOf(navArgument("noteId") { type = NavType.IntType })
         ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getInt("noteId") ?: -1
-            val note = NotesStorage.getActiveNotes().find { it.id == noteId }
-            if (note != null) {
-                NoteEditorOverlay(
-                    note = note,
-                    onExit = { navController.popBackStack() }
-                )
-            }
-        }
-
-    }
-}
-
-@Composable
-fun NotesAppScreen() {
-
-    val context = LocalContext.current
-
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2000)
-        isLoading = false
-    }
-
-    if (isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        }
-        return
-    }
-
-    var isFabExpanded by remember { mutableStateOf(false) }
-
-    var showFolderDialog by remember { mutableStateOf(false) }
-    var editingNote by remember { mutableStateOf<Note?>(null) }
-    var folderNameInput by remember { mutableStateOf("") }
-
-    var selectedFolder by remember { mutableStateOf<Folder?>(null) }
-    var isGridView by remember { mutableStateOf(true) }
-    var showFolders by remember { mutableStateOf(true) }
-
-    var searchQuery by remember { mutableStateOf("") }
-
-    var noteToDelete by remember { mutableStateOf<Note?>(null) }
-
-    if (editingNote != null) {
-        BackHandler { editingNote = null }
-        NoteEditorOverlay(
-            note = editingNote!!,
-            onExit = { editingNote = null }
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(top = 48.dp)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-//                            text = "Нотатки (" + NotesStorage.getActiveNotes().size + ")",
-                            text = "Нотатки",
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        if (NotesStorage.getActiveNotes().size > 5) {
-                            Spacer(Modifier.width(8.dp))
-                            Surface(
-                                color = Color.Red.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = "Ліміт Free версії",
-                                    color = Color.Red,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Row {
-                        IconButton(onClick = {
-                            showFolders = !showFolders
-                            if (!showFolders) {
-                                selectedFolder = null
-                            }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Folder,
-                                contentDescription = "Папки",
-                                tint = if (showFolders) MaterialTheme.colorScheme.primary else Color.Gray
-                            )
-                        }
-                        IconButton(onClick = { isGridView = !isGridView }) {
-                            Icon(
-                                imageVector = Icons.Default.List,
-                                contentDescription = "Змінити вигляд",
-                                tint = if (isGridView) Color.Gray else MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                    }
-                }
-
-                if (NotesStorage.getActiveNotes().isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 80.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "📝", fontSize = 48.sp)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Створіть першу нотатку",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                } else {
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    val activeFolders = NotesStorage.getActiveFolders().toList()
-                    val folderCounts = NotesStorage.getFolderCounts()
-
-                    if (showFolders) {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            item {
-                                if (isGridView) {
-                                    FolderGridItem(
-                                        name = "Всі",
-                                        count = NotesStorage.getActiveNotes().size,
-                                        isSelected = selectedFolder == null
-                                    ) { selectedFolder = null }
-                                } else {
-                                    FolderListItem(
-                                        name = "Всі",
-                                        count = NotesStorage.getActiveNotes().size,
-                                        isSelected = selectedFolder == null
-                                    ) { selectedFolder = null }
-                                }
-                            }
-                            items(activeFolders) { folder ->
-                                if (isGridView) {
-                                    FolderGridItem(
-                                        name = folder.displayName,
-                                        count = folderCounts[folder] ?: 0,
-                                        isSelected = selectedFolder == folder
-                                    ) { selectedFolder = folder }
-                                } else {
-                                    FolderListItem(
-                                        name = folder.displayName,
-                                        count = folderCounts[folder] ?: 0,
-                                        isSelected = selectedFolder == folder
-                                    ) { selectedFolder = folder }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    val notesToShow by remember(selectedFolder, searchQuery, NotesStorage.getActiveNotes().size) {
-                        derivedStateOf {
-                            NotesStorage.getNotesFiltered(selectedFolder).filter { note ->
-                                searchQuery.isEmpty()
-                                        || note.title.contains(searchQuery, ignoreCase = true)
-                                        || note.content.contains(searchQuery, ignoreCase = true)
-                            }
-                        }
-                    }
-
-                    if (isGridView) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 160.dp),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                bottom = 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(notesToShow) { note ->
-                                NoteGridItem(
-                                    note = note,
-                                    onClick = { editingNote = note },
-                                    onDelete = { noteToDelete = note }
-                                )
-                            }
-                        }
-                    } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                bottom = 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(notesToShow) { note ->
-                                NoteListItem(
-                                    note = note,
-                                    onClick = { editingNote = note },
-                                    onDelete = { noteToDelete = note }
-                                )
-                            }
-                        }
-                    }
-                }
-
-            }
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                if (isFabExpanded) {
-                    SmallFloatingActionButton(
-                        onClick = { isFabExpanded = false; showFolderDialog = true },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Folder, "Папка")
-                            Spacer(Modifier.width(8.dp))
-                            Text("Папка")
-                        }
-                    }
-                    SmallFloatingActionButton(
-                        onClick = {
-                            isFabExpanded = false
-                            val newNote = Note("")
-                            NotesStorage.addNote(newNote)
-                            editingNote = newNote
-                        },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    ) {
-                        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Description, "Нотатка")
-                            Spacer(Modifier.width(8.dp))
-                            Text("Нотатка")
-                        }
-                    }
-                }
-
-                FloatingActionButton(
-                    onClick = { isFabExpanded = !isFabExpanded },
-                    containerColor = Color(0xFFFFB300),
-                    shape = CircleShape
-                ) {
-                    Icon(if (isFabExpanded) Icons.Default.Close else Icons.Default.Add, "Меню", tint = Color.Black)
-                }
-            }
-
-        }
-
-        if (showFolderDialog) {
-            AlertDialog(
-                onDismissRequest = { showFolderDialog = false },
-                title = { Text("Нова папка") },
-                text = {
-                    Column {
-                        Text("Вкажіть назву папки")
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = folderNameInput,
-                            onValueChange = { folderNameInput = it },
-                            singleLine = true
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        Toast.makeText(context, "Симуляція нової папки: $folderNameInput", Toast.LENGTH_SHORT).show()
-                        folderNameInput = ""
-                        showFolderDialog = false
-                    }) { Text("Створити папку") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showFolderDialog = false }) { Text("Відміна") }
-                }
-            )
-        }
-
-        if (noteToDelete != null) {
-            AlertDialog(
-                onDismissRequest = { noteToDelete = null },
-                icon = { Icon(Icons.Default.Warning, contentDescription = "Увага", tint = Color.Red) },
-                title = { Text("Увага!") },
-                text = { Text("Ви дійсно хочете видалити нотатку \"${noteToDelete?.title}\"?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        NotesStorage.deleteNote(noteToDelete!!)
-                        noteToDelete = null
-                    }) {
-                        Text("Так", color = Color.Red, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { noteToDelete = null }) { Text("Ні") }
-                }
+            NoteEditorOverlay(
+                noteId = noteId,
+                onExit = { navController.popBackStack() }
             )
         }
 
@@ -631,15 +307,45 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
 }
 
 @Composable
-fun NoteEditorOverlay(note: Note, onExit: () -> Unit) {
+fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit) {
+    // 1. Отримуємо ViewModel та підписуємося на стани
+    val viewModel: NoteDetailsViewModel = viewModel(factory = NoteDetailsViewModel.Factory(noteId))
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 2. Обробляємо стани (Завдання 3)
+    when (val s = state) {
+        is NoteDetailsState.Loading -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is NoteDetailsState.Error -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(s.message, color = Color.Red)
+            }
+        }
+        is NoteDetailsState.Success -> {
+            // 3. Коли дані успішно завантажені, малюємо твій UI
+            NoteEditorContent(
+                note = s.note,
+                onSave = { t, c, f -> viewModel.updateNote(t, c, f) },
+                onExit = onExit
+            )
+        }
+    }
+}
+
+@Composable
+fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onExit: () -> Unit) {
+    // Твій старий добрий UI, але тепер він використовує дані з `note`, які передала ViewModel
     var title by remember { mutableStateOf(note.title) }
     var content by remember { mutableStateOf(note.content) }
     var currentFolder by remember { mutableStateOf(note.folder) }
-
     var isDropdownExpanded by remember { mutableStateOf(false) }
 
+    // Викликаємо збереження у ViewModel при кожній зміні
     LaunchedEffect(title, content, currentFolder) {
-        note.edit(title, content, currentFolder)
+        onSave(title, content, currentFolder)
     }
 
     Column(

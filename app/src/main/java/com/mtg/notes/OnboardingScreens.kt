@@ -20,7 +20,7 @@ fun OnboardingScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "📝", fontSize = 100.sp) // Логотип
+        Text(text = "📝", fontSize = 100.sp)
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Notes App", fontSize = 32.sp, fontWeight = FontWeight.Bold)
 

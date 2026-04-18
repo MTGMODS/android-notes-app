@@ -3,12 +3,12 @@ package com.mtg.notes
 class NotesRepository {
     private val activeNotes = mutableListOf<Note>()
 
-    init {
+    init {  // demo
         activeNotes.add(Note(id = 1, title = "Ідея для додатку", content = "Зробити MVVM архітектуру", folder = Folder.WORK))
         activeNotes.add(Note(id = 2, title = "Купити в магазині", content = "Молоко, хліб, яйця", folder = Folder.PERSONAL))
     }
 
-    fun getActiveNotes(): List<Note> {
+    fun getAllNotes(): List<Note> {
         return activeNotes.toList()
     }
 
