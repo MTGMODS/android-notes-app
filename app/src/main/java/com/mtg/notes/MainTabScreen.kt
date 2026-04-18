@@ -232,10 +232,11 @@ fun MainFab(
 
         FloatingActionButton(
             onClick = onToggle,
-            containerColor = Color(0xFFFFB300),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             shape = CircleShape
         ) {
-            Icon(if (isExpanded) Icons.Default.Close else Icons.Default.Add, "Меню", tint = Color.Black)
+            Icon(if (isExpanded) Icons.Default.Close else Icons.Default.Add, "Меню")
         }
     }
 }
@@ -328,20 +329,20 @@ fun GridTabContent(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, fontSize = 32.sp, fontWeight = FontWeight.Medium)
+                Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
                 if (totalNotesCount > 5) {
                     Spacer(Modifier.width(8.dp))
-                    Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                        Text("Ліміт", color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(4.dp))
+                    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
+                        Text("Ліміт", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                 }
             }
             Row {
                 IconButton(onClick = onToggleFolders) {
-                    Icon(Icons.Default.Folder, contentDescription = "Папки", tint = if(showFolders) MaterialTheme.colorScheme.primary else Color.Gray)
+                    Icon(Icons.Default.Folder, contentDescription = "Папки", tint = if(showFolders) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                 }
                 IconButton(onClick = onToggleSort) {
-                    Icon(Icons.Default.SortByAlpha, contentDescription = "Сортування", tint = if(isSortAsc) MaterialTheme.colorScheme.primary else Color.Gray)
+                    Icon(Icons.Default.SortByAlpha, contentDescription = "Сортування", tint = if(isSortAsc) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                 }
             }
         }
@@ -395,11 +396,11 @@ fun NotesHeader(showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: 
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, fontSize = 32.sp, fontWeight = FontWeight.Medium)
+            Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
             if (showLimitBadge) {
                 Spacer(Modifier.width(8.dp))
-                Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                    Text("Ліміт", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
+                    Text("Ліміт", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
         }
@@ -407,7 +408,7 @@ fun NotesHeader(showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: 
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = "Папки",
-                tint = if (showFolders) MaterialTheme.colorScheme.primary else Color.Gray
+                tint = if (showFolders) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
             )
         }
     }
@@ -417,9 +418,9 @@ fun NotesHeader(showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: 
 fun EmptyNotesPlaceholder() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "📝", fontSize = 48.sp)
+            Text(text = "📝", style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Створіть першу нотатку", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 18.sp)
+            Text("Створіть першу нотатку", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -428,12 +429,12 @@ fun EmptyNotesPlaceholder() {
 fun DeleteConfirmationDialog(noteTitle: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Warning, contentDescription = "Увага", tint = Color.Red) },
+        icon = { Icon(Icons.Default.Warning, contentDescription = "Увага", tint = MaterialTheme.colorScheme.error) },
         title = { Text("Увага!") },
         text = { Text("Ви дійсно хочете видалити нотатку \"$noteTitle\"?") },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Так", color = Color.Red, fontWeight = FontWeight.Bold)
+                Text("Так", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -470,8 +471,8 @@ fun ProfileTab(userName: String, onNameChange: (String) -> Unit) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Інформація про додаток", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Назва: Notes App (Лаба 5)")
-                Text("Версія: 5.0.0")
+                Text("Назва: Notes App (Лаба 7)")
+                Text("Версія: 7.0.0")
                 Text("Розробник: Marher Bohdan")
             }
         }

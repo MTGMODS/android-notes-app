@@ -22,7 +22,12 @@ fun OnboardingScreen(
     ) {
         Text(text = "📝", fontSize = 100.sp)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Notes App", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
+        Text(
+            text = "Notes App",
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+        )
 
         Spacer(modifier = Modifier.height(48.dp))
 
