@@ -1,12 +1,11 @@
 package com.mtg.notes
 
+import android.content.res.Configuration
 import androidx.activity.enableEdgeToEdge
 import android.os.Bundle
 import android.text.format.DateUtils
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,19 +19,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,19 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -66,7 +49,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -89,19 +72,16 @@ class MainActivity : ComponentActivity() {
                 AppNavigation()
             }
         }
-
     }
 }
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-
     val mainViewModel: MainViewModel = viewModel()
     val profileViewModel: ProfileViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Screen.Onboarding.route) {
-
         composable(Screen.Onboarding.route) { backStackEntry ->
             val savedName by backStackEntry.savedStateHandle.getStateFlow("userName", "").collectAsState()
             OnboardingScreen(
@@ -145,7 +125,6 @@ fun AppNavigation() {
                 }
             )
         }
-
     }
 }
 
@@ -154,7 +133,7 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text("Пошук нотаток...", color = Color.Gray) },
+        placeholder = { Text("Пошук нотаток...", color = MaterialTheme.colorScheme.outline) },
         leadingIcon = {
             Icon(Icons.Default.Search, contentDescription = "Пошук", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         },
@@ -184,8 +163,8 @@ fun FolderListItem(name: String, count: Int, isSelected: Boolean, onClick: () ->
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = "📁", fontSize = 16.sp, modifier = Modifier.padding(end = 6.dp))
-        Text(text = "$name [$count]", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(text = "📁", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
+        Text(text = "$name [$count]", color = textColor, style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -204,10 +183,10 @@ fun FolderGridItem(name: String, count: Int, isSelected: Boolean, onClick: () ->
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "📁", fontSize = 32.sp)
+        Text(text = "📁", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = name, color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text(text = "$count нотаток", color = textColor.copy(alpha = 0.7f), fontSize = 12.sp)
+        Text(text = name, color = textColor, style = MaterialTheme.typography.titleMedium)
+        Text(text = "$count нотаток", color = textColor.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -228,16 +207,11 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
             .clickable { onClick() }
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Text(
                 text = note.title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -246,7 +220,7 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Видалити",
-                    tint = Color.Red.copy(alpha = 0.6f)
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -254,17 +228,14 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
         Text(
             text = note.getPreviewText(),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f) // Виштовхує низ
+            modifier = Modifier.weight(1f)
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = dateString, color = Color.Gray, fontSize = 12.sp)
-            Text(text = note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(text = dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
+            Text(text = note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
     }
 }
@@ -290,8 +261,7 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
             Text(
                 text = note.title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -299,29 +269,27 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
             Text(
                 text = note.getPreviewText(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Text(text = dateString, color = Color.Gray, fontSize = 12.sp)
-            Text(text = note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(text = dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
+            Text(text = note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
         IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Видалити", tint = Color.Red.copy(alpha = 0.6f))
+            Icon(Icons.Default.Delete, contentDescription = "Видалити", tint = MaterialTheme.colorScheme.error)
         }
     }
 }
 
 @Composable
 fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit) {
-    // 1. Отримуємо ViewModel та підписуємося на стани
     val viewModel: NoteDetailsViewModel = viewModel(factory = NoteDetailsViewModel.Factory(noteId))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 2. Обробляємо стани (Завдання 3)
     when (val s = state) {
         is NoteDetailsState.Loading -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -330,11 +298,10 @@ fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit) {
         }
         is NoteDetailsState.Error -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(s.message, color = Color.Red)
+                Text(s.message, color = MaterialTheme.colorScheme.error)
             }
         }
         is NoteDetailsState.Success -> {
-            // 3. Коли дані успішно завантажені, малюємо твій UI
             NoteEditorContent(
                 note = s.note,
                 onSave = { t, c, f -> viewModel.updateNote(t, c, f) },
@@ -346,13 +313,11 @@ fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit) {
 
 @Composable
 fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onExit: () -> Unit) {
-    // Твій старий добрий UI, але тепер він використовує дані з `note`, які передала ViewModel
     var title by remember { mutableStateOf(note.title) }
     var content by remember { mutableStateOf(note.content) }
     var currentFolder by remember { mutableStateOf(note.folder) }
     var isDropdownExpanded by remember { mutableStateOf(false) }
 
-    // Викликаємо збереження у ViewModel при кожній зміні
     LaunchedEffect(title, content, currentFolder) {
         onSave(title, content, currentFolder)
     }
@@ -363,22 +328,12 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
             .background(MaterialTheme.colorScheme.background)
             .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             IconButton(
                 onClick = onExit,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    .size(40.dp)
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape).size(40.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Назад",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Box {
@@ -387,36 +342,18 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "📁 " + (currentFolder?.displayName ?: "Без папки"),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Text("📁 " + (currentFolder?.displayName ?: "Без папки"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                 }
 
-                DropdownMenu(
-                    expanded = isDropdownExpanded,
-                    onDismissRequest = { isDropdownExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Без папки") },
-                        onClick = { currentFolder = null; isDropdownExpanded = false }
-                    )
+                DropdownMenu(expanded = isDropdownExpanded, onDismissRequest = { isDropdownExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Без папки") }, onClick = { currentFolder = null; isDropdownExpanded = false })
                     Folder.entries.forEach { folder ->
-                        DropdownMenuItem(
-                            text = { Text(folder.displayName) },
-                            onClick = { currentFolder = folder; isDropdownExpanded = false }
-                        )
+                        DropdownMenuItem(text = { Text(folder.displayName) }, onClick = { currentFolder = folder; isDropdownExpanded = false })
                     }
                 }
             }
 
-            Text(
-                text = "${content.length} симв.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text("${content.length} симв.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -441,9 +378,7 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
         OutlinedTextField(
             value = content,
             onValueChange = { content = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             placeholder = { Text("Почніть писати тут...") },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
@@ -452,5 +387,24 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
                 unfocusedIndicatorColor = Color.Transparent
             )
         )
+    }
+}
+
+
+@Preview(name = "Світла тема", showBackground = true)
+@Preview(name = "Темна тема", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+annotation class ThemePreviews
+
+@ThemePreviews
+@Composable
+fun AppPreview() {
+    NotesTheme {
+        Surface(modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.background) {
+            NoteListItem(
+                note = Note("Тестова нотатка для перевірки теми", Folder.WORK).apply { title = "Привіт, Лаба 7!" },
+                onClick = {},
+                onDelete = {}
+            )
+        }
     }
 }
