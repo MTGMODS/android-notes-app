@@ -66,6 +66,8 @@ class MainActivity : ComponentActivity() {
         val database = NotesDatabase.getDatabase(applicationContext, lifecycleScope)
         globalNotesRepository = NotesRepository(database.noteDao())
 
+        globalSettingsRepository = SettingsRepository(applicationContext.dataStore)
+
         setContent {
             NotesTheme {
                 AppNavigation()
