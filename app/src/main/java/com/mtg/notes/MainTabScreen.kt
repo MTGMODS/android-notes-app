@@ -329,9 +329,14 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
     Column(modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() }.padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-
-            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp).padding(end = 4.dp)) {
-                Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
+            Row {
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp).padding(end = 4.dp)) {
+                    Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -357,9 +362,13 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
             Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
             Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
-
-        IconButton(onClick = onToggleFavorite) {
-            Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
+        Row {
+            IconButton(onClick = onToggleFavorite) {
+                Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }
