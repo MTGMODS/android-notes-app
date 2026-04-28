@@ -1,21 +1,41 @@
 package com.mtg.notes
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class ProfileViewModel : ViewModel() {
-    private val _userName = MutableStateFlow("")
-    val userName: StateFlow<String> = _userName.asStateFlow()
+    private val repository = globalSettingsRepository
 
-    fun setInitialNameIfNeeded(name: String) {
-        if (_userName.value.isEmpty()) {
-            _userName.value = name
-        }
-    }
+    val userName: StateFlow<String> = repository.userNameFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    val isDarkTheme: StateFlow<Boolean> = repository.isDarkThemeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isSortAscending: StateFlow<Boolean> = repository.isSortAscendingFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val showFavoritesOnly: StateFlow<Boolean> = repository.showFavoritesOnlyFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
 
     fun updateName(newName: String) {
-        _userName.value = newName
+        viewModelScope.launch { repository.saveUserName(newName) }
+    }
+
+    fun toggleTheme() {
+        viewModelScope.launch { repository.toggleTheme() }
+    }
+
+    fun toggleSortOrder() {
+        viewModelScope.launch { repository.toggleSortOrder() }
+    }
+
+    fun toggleFavoritesOnly() {
+        viewModelScope.launch { repository.toggleFavoritesOnly() }
     }
 }
