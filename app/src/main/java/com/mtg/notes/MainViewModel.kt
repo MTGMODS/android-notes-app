@@ -10,9 +10,6 @@ class MainViewModel : ViewModel() {
     private val repository = globalNotesRepository
     private val settings = globalSettingsRepository
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -64,11 +61,7 @@ class MainViewModel : ViewModel() {
     init { loadData() }
 
     private fun loadData() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            delay(1000)
-            _isLoading.value = false
-        }
+        viewModelScope.launch {}
     }
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
