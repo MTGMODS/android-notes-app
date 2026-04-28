@@ -1,6 +1,6 @@
 package com.mtg.notes
 
-import android.content.res.Configuration
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.enableEdgeToEdge
 import android.os.Bundle
 import android.text.format.DateUtils
@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -46,10 +44,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -66,6 +62,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val database = NotesDatabase.getDatabase(applicationContext, lifecycleScope)
+        globalNotesRepository = NotesRepository(database.noteDao())
 
         setContent {
             NotesTheme {
@@ -328,12 +327,23 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
             .background(MaterialTheme.colorScheme.background)
             .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             IconButton(
                 onClick = onExit,
-                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape).size(40.dp)
+                modifier = Modifier.background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    CircleShape
+                ).size(40.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Назад",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Box {
@@ -342,18 +352,32 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("📁 " + (currentFolder?.displayName ?: "Без папки"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        "📁 " + (currentFolder?.displayName ?: "Без папки"),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
 
-                DropdownMenu(expanded = isDropdownExpanded, onDismissRequest = { isDropdownExpanded = false }) {
-                    DropdownMenuItem(text = { Text("Без папки") }, onClick = { currentFolder = null; isDropdownExpanded = false })
+                DropdownMenu(
+                    expanded = isDropdownExpanded,
+                    onDismissRequest = { isDropdownExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Без папки") },
+                        onClick = { currentFolder = null; isDropdownExpanded = false })
                     Folder.entries.forEach { folder ->
-                        DropdownMenuItem(text = { Text(folder.displayName) }, onClick = { currentFolder = folder; isDropdownExpanded = false })
+                        DropdownMenuItem(
+                            text = { Text(folder.displayName) },
+                            onClick = { currentFolder = folder; isDropdownExpanded = false })
                     }
                 }
             }
 
-            Text("${content.length} симв.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text(
+                "${content.length} симв.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -373,7 +397,10 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
             )
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        )
 
         OutlinedTextField(
             value = content,
@@ -387,24 +414,5 @@ fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onE
                 unfocusedIndicatorColor = Color.Transparent
             )
         )
-    }
-}
-
-
-@Preview(name = "Світла тема", showBackground = true)
-@Preview(name = "Темна тема", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-annotation class ThemePreviews
-
-@ThemePreviews
-@Composable
-fun AppPreview() {
-    NotesTheme {
-        Surface(modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.background) {
-            NoteListItem(
-                note = Note("Тестова нотатка для перевірки теми", Folder.WORK).apply { title = "Привіт, Лаба 7!" },
-                onClick = {},
-                onDelete = {}
-            )
-        }
     }
 }
