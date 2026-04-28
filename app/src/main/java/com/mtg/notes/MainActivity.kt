@@ -118,10 +118,7 @@ fun AppNavigation() {
             val noteId = backStackEntry.arguments?.getInt("noteId") ?: -1
             NoteEditorOverlay(
                 noteId = noteId,
-                onExit = {
-                    mainViewModel.refreshNotes()
-                    navController.popBackStack()
-                }
+                onExit = { navController.popBackStack() }
             )
         }
     }
