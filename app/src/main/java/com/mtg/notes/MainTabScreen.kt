@@ -93,8 +93,9 @@ fun MainTabScreen(
                     onCreateFolder = { isFabExpanded = false; showFolderDialog = true },
                     onCreateNote = {
                         isFabExpanded = false
-                        val id = mainViewModel.createNote()
-                        globalNavController.navigate(Screen.NoteDetails.createRoute(id))
+                        mainViewModel.createNote { newId ->
+                            globalNavController.navigate(Screen.NoteDetails.createRoute(newId))
+                        }
                     }
                 )
             }
