@@ -123,7 +123,7 @@ fun MainTabScreen(
                             showFolders = showFolders,
                             onToggleFolders = {
                                 showFolders = !showFolders
-                                if (!showFolders) mainViewModel.selectFolder(null) // Скидаємо фільтр, якщо ховаємо папки
+                                if (!showFolders) mainViewModel.selectFolder(null)
                             }
                         )
                     }
