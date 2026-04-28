@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
     private val repository = globalNotesRepository
+    private val settings = globalSettingsRepository
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -18,13 +19,25 @@ class MainViewModel : ViewModel() {
     private val _selectedFolder = MutableStateFlow<Folder?>(null)
     val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
 
-    private val _isSortAscending = MutableStateFlow(true)
-    val isSortAscending: StateFlow<Boolean> = _isSortAscending.asStateFlow()
+    val isSortAscending: StateFlow<Boolean> = settings.isSortAscendingFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val showFavoritesOnly: StateFlow<Boolean> = settings.showFavoritesOnlyFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
 
     val notesToShow: StateFlow<List<Note>> = combine(
-        repository.getAllNotesFlow(), _searchQuery, _selectedFolder, _isSortAscending
-    ) { allNotes, query, folder, sortAsc ->
+        repository.getAllNotesFlow(),
+        _searchQuery,
+        _selectedFolder,
+        settings.isSortAscendingFlow,
+        settings.showFavoritesOnlyFlow
+    ) { allNotes, query, folder, sortAsc, favoritesOnly ->
         var filtered = allNotes
+
+        if (favoritesOnly) {
+            filtered = filtered.filter { it.isFavorite }
+        }
 
         if (folder != null) filtered = filtered.filter { it.folder == folder }
         if (query.isNotEmpty()) {
@@ -32,6 +45,7 @@ class MainViewModel : ViewModel() {
                 it.title.contains(query, ignoreCase = true) || it.content.contains(query, ignoreCase = true)
             }
         }
+
         if (sortAsc) filtered.sortedBy { it.updatedAt } else filtered.sortedByDescending { it.updatedAt }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -59,7 +73,15 @@ class MainViewModel : ViewModel() {
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
     fun selectFolder(folder: Folder?) { _selectedFolder.value = folder }
-    fun toggleSortOrder() { _isSortAscending.value = !_isSortAscending.value }
+
+
+    fun toggleSortOrder() {
+        viewModelScope.launch { settings.toggleSortOrder() }
+    }
+
+    fun toggleFavoritesOnly() {
+        viewModelScope.launch { settings.toggleFavoritesOnly() }
+    }
 
     fun createNote(onCreated: (Int) -> Unit) {
         viewModelScope.launch {
