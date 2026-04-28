@@ -1,6 +1,8 @@
 package com.mtg.notes
 
-import androidx.compose.runtime.mutableStateListOf
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.TypeConverter
 
 enum class Folder(val displayName: String) {
     STUDY("Навчання"),
@@ -9,36 +11,29 @@ enum class Folder(val displayName: String) {
     IDEAS("Ідеї")
 }
 
-open class Note(
-    val id: Int = generateNextId(),
+@Entity(tableName = "notes")
+data class Note(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     var title: String = "Без назви",
     var content: String,
-    var folder: Folder? = null
-) {
+    var folder: Folder? = null,
+    var isFavorite: Boolean = false,
     var updatedAt: Long = System.currentTimeMillis()
-
-    constructor(content: String, folder: Folder? = null) : this(
-        title = content.lineSequence().firstOrNull { it.isNotBlank() } ?: "Без назви",
-        content = content,
-        folder = folder
-    )
-
-    companion object {
-        private var currentIdCounter = 1
-        fun generateNextId(): Int {
-            return currentIdCounter++
-        }
-    }
-
-    open fun edit(newTitle: String, newContent: String, newFolder: Folder?) {
-        this.title = newTitle
-        this.content = newContent
-        this.folder = newFolder
-        this.updatedAt = System.currentTimeMillis()
-    }
-
-    open fun getPreviewText(): String {
+) {
+    fun getPreviewText(): String {
         return if (content.length > 25) content.substring(0, 25) + "..." else content
     }
+}
 
+class Converters {
+    @TypeConverter
+    fun fromFolder(folder: Folder?): String? {
+        return folder?.name
+    }
+
+    @TypeConverter
+    fun toFolder(name: String?): Folder? {
+        return name?.let { enumValueOf<Folder>(it) }
+    }
 }
