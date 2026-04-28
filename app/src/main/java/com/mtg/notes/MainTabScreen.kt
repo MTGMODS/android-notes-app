@@ -5,7 +5,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Switch
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,10 +28,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.text.format.DateUtils
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
@@ -51,22 +58,21 @@ fun MainTabScreen(
     val notesToShow by mainViewModel.notesToShow.collectAsStateWithLifecycle()
     val searchQuery by mainViewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedFolder by mainViewModel.selectedFolder.collectAsStateWithLifecycle()
-    val isSortAscending by mainViewModel.isSortAscending.collectAsStateWithLifecycle()
     val activeFolders by mainViewModel.activeFolders.collectAsStateWithLifecycle()
     val folderCounts by mainViewModel.folderCounts.collectAsStateWithLifecycle()
     val totalNotesCount by mainViewModel.totalNotesCount.collectAsStateWithLifecycle()
 
+    // DataStore
+    val isSortAscending by mainViewModel.isSortAscending.collectAsStateWithLifecycle()
+    val showFavoritesOnly by mainViewModel.showFavoritesOnly.collectAsStateWithLifecycle()
     val currentUserName by profileViewModel.userName.collectAsStateWithLifecycle()
-
     val isDarkTheme by profileViewModel.isDarkTheme.collectAsStateWithLifecycle()
-    val isSortAscendingGlobal by profileViewModel.isSortAscending.collectAsStateWithLifecycle()
 
     var currentTab by rememberSaveable { mutableStateOf(BottomTab.LIST) }
     var showFolders by rememberSaveable { mutableStateOf(true) }
 
     var isFabExpanded by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<Note?>(null) }
-
     var showFolderDialog by remember { mutableStateOf(false) }
     var folderNameInput by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -119,11 +125,16 @@ fun MainTabScreen(
                             onFolderSelect = { mainViewModel.selectFolder(it) },
                             onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
                             onDeleteRequest = { noteToDelete = it },
+                            onToggleFavorite = { mainViewModel.toggleFavorite(it) },
                             showFolders = showFolders,
                             onToggleFolders = {
                                 showFolders = !showFolders
                                 if (!showFolders) mainViewModel.selectFolder(null)
-                            }
+                            },
+                            isSortAsc = isSortAscending,
+                            onToggleSort = { mainViewModel.toggleSortOrder() },
+                            showFavoritesOnly = showFavoritesOnly,
+                            onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
                         )
                     }
                     BottomTab.GRID -> {
@@ -138,21 +149,24 @@ fun MainTabScreen(
                             onFolderSelect = { mainViewModel.selectFolder(it) },
                             onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
                             onDeleteRequest = { noteToDelete = it },
+                            onToggleFavorite = { mainViewModel.toggleFavorite(it) },
                             showFolders = showFolders,
                             onToggleFolders = {
                                 showFolders = !showFolders
                                 if (!showFolders) mainViewModel.selectFolder(null)
-                            }
+                            },
+                            showFavoritesOnly = showFavoritesOnly,
+                            onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
                         )
                     }
                     BottomTab.PROFILE -> {
                         ProfileTab(
-                            userName = currentUserName,
+                            userName = currentUserName.ifEmpty { userName },
                             onNameChange = { profileViewModel.updateName(it) },
                             isDarkTheme = isDarkTheme,
                             onToggleTheme = { profileViewModel.toggleTheme() },
-                            isSortAscending = isSortAscendingGlobal,
-                            onToggleSort = { profileViewModel.toggleSortOrder() }
+                            isSortAscending = isSortAscending,
+                            onToggleSort = { mainViewModel.toggleSortOrder() }
                         )
                     }
                 }
@@ -185,20 +199,15 @@ fun MainTabScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    Toast.makeText(context, "Симуляція нової папки: $folderNameInput", Toast.LENGTH_SHORT).show()
-                    folderNameInput = ""
-                    showFolderDialog = false
+                    Toast.makeText(context, "Симуляція: $folderNameInput", Toast.LENGTH_SHORT).show()
+                    folderNameInput = ""; showFolderDialog = false
                 }) { Text("Створити") }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    folderNameInput = ""
-                    showFolderDialog = false
-                }) { Text("Відміна") }
+                TextButton(onClick = { folderNameInput = ""; showFolderDialog = false }) { Text("Відміна") }
             }
         )
     }
-
 }
 
 @Composable
@@ -247,25 +256,14 @@ fun MainFab(
 
 @Composable
 fun ListTabContent(
-    notes: List<Note>,
-    totalNotesCount: Int,
-    searchQuery: String,
-    onQueryChange: (String) -> Unit,
-    folders: Set<Folder>,
-    counts: Map<Folder, Int>,
-    selectedFolder: Folder?,
-    onFolderSelect: (Folder?) -> Unit,
-    onNoteClick: (Note) -> Unit,
-    onDeleteRequest: (Note) -> Unit,
-    showFolders: Boolean,
-    onToggleFolders: () -> Unit
+    notes: List<Note>, totalNotesCount: Int, searchQuery: String, onQueryChange: (String) -> Unit,
+    folders: Set<Folder>, counts: Map<Folder, Int>, selectedFolder: Folder?, onFolderSelect: (Folder?) -> Unit,
+    onNoteClick: (Note) -> Unit, onDeleteRequest: (Note) -> Unit, onToggleFavorite: (Note) -> Unit,
+    showFolders: Boolean, onToggleFolders: () -> Unit, isSortAsc: Boolean, onToggleSort: () -> Unit,
+    showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        NotesHeader(
-            showLimitBadge = totalNotesCount > 5,
-            showFolders = showFolders,
-            onToggleFolders = onToggleFolders
-        )
+        NotesHeader(totalNotesCount > 5, showFolders, onToggleFolders, isSortAsc, onToggleSort, showFavoritesOnly, onToggleFavoritesFilter)
 
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
             SearchBar(query = searchQuery, onQueryChange = onQueryChange)
@@ -273,39 +271,17 @@ fun ListTabContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (showFolders) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    FolderListItem(
-                        name = "Всі",
-                        count = totalNotesCount,
-                        isSelected = selectedFolder == null
-                    ) { onFolderSelect(null) }
-                }
-                items(folders.toList()) { folder ->
-                    FolderListItem(
-                        name = folder.displayName,
-                        count = counts[folder] ?: 0,
-                        isSelected = selectedFolder == folder
-                    ) { onFolderSelect(folder) }
-                }
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                item { FolderListItem("Всі", totalNotesCount, selectedFolder == null) { onFolderSelect(null) } }
+                items(folders.toList()) { folder -> FolderListItem(folder.displayName, counts[folder] ?: 0, selectedFolder == folder) { onFolderSelect(folder) } }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (notes.isEmpty()) {
-            EmptyNotesPlaceholder()
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(notes) { note ->
-                    NoteListItem(note = note, onClick = { onNoteClick(note) }, onDelete = { onDeleteRequest(note) })
-                }
+        if (notes.isEmpty()) EmptyNotesPlaceholder()
+        else {
+            LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(notes) { note -> NoteListItem(note, { onNoteClick(note) }, { onDeleteRequest(note) }, { onToggleFavorite(note) }) }
             }
         }
     }
@@ -313,91 +289,40 @@ fun ListTabContent(
 
 @Composable
 fun GridTabContent(
-    notes: List<Note>,
-    totalNotesCount: Int,
-    folders: Set<Folder>,
-    counts: Map<Folder, Int>,
-    selectedFolder: Folder?,
-    isSortAsc: Boolean,
-    onToggleSort: () -> Unit,
-    onFolderSelect: (Folder?) -> Unit,
-    onNoteClick: (Note) -> Unit,
-    onDeleteRequest: (Note) -> Unit,
-    showFolders: Boolean,
-    onToggleFolders: () -> Unit
+    notes: List<Note>, totalNotesCount: Int, folders: Set<Folder>, counts: Map<Folder, Int>,
+    selectedFolder: Folder?, isSortAsc: Boolean, onToggleSort: () -> Unit, onFolderSelect: (Folder?) -> Unit,
+    onNoteClick: (Note) -> Unit, onDeleteRequest: (Note) -> Unit, onToggleFavorite: (Note) -> Unit,
+    showFolders: Boolean, onToggleFolders: () -> Unit, showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
-                if (totalNotesCount > 5) {
-                    Spacer(Modifier.width(8.dp))
-                    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
-                        Text("Ліміт", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                    }
-                }
-            }
-            Row {
-                IconButton(onClick = onToggleFolders) {
-                    Icon(Icons.Default.Folder, contentDescription = "Папки", tint = if(showFolders) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
-                }
-                IconButton(onClick = onToggleSort) {
-                    Icon(Icons.Default.SortByAlpha, contentDescription = "Сортування", tint = if(isSortAsc) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
-                }
-            }
-        }
+        NotesHeader(totalNotesCount > 5, showFolders, onToggleFolders, isSortAsc, onToggleSort, showFavoritesOnly, onToggleFavoritesFilter)
 
         if (showFolders) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    FolderGridItem(
-                        name = "Всі",
-                        count = totalNotesCount,
-                        isSelected = selectedFolder == null
-                    ) { onFolderSelect(null) }
-                }
-                items(folders.toList()) { folder ->
-                    FolderGridItem(
-                        name = folder.displayName,
-                        count = counts[folder] ?: 0,
-                        isSelected = selectedFolder == folder
-                    ) { onFolderSelect(folder) }
-                }
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                item { FolderGridItem("Всі", totalNotesCount, selectedFolder == null) { onFolderSelect(null) } }
+                items(folders.toList()) { folder -> FolderGridItem(folder.displayName, counts[folder] ?: 0, selectedFolder == folder) { onFolderSelect(folder) } }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (notes.isEmpty()) {
-            EmptyNotesPlaceholder()
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(notes) { note ->
-                    NoteGridItem(note = note, onClick = { onNoteClick(note) }, onDelete = { onDeleteRequest(note) })
-                }
+        if (notes.isEmpty()) EmptyNotesPlaceholder()
+        else {
+            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 160.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(notes) { note -> NoteGridItem(note, { onNoteClick(note) }, { onDeleteRequest(note) }, { onToggleFavorite(note) }) }
             }
         }
     }
 }
 
 @Composable
-fun NotesHeader(showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: () -> Unit) {
+fun NotesHeader(
+    showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: () -> Unit,
+    isSortAsc: Boolean, onToggleSort: () -> Unit,
+    showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Нотатки", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
@@ -408,12 +333,61 @@ fun NotesHeader(showLimitBadge: Boolean, showFolders: Boolean, onToggleFolders: 
                 }
             }
         }
-        IconButton(onClick = onToggleFolders) {
-            Icon(
-                imageVector = Icons.Default.Folder,
-                contentDescription = "Папки",
-                tint = if (showFolders) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-            )
+        Row {
+            IconButton(onClick = onToggleFavoritesFilter) {
+                Icon(
+                    imageVector = if(showFavoritesOnly) Icons.Default.Star else Icons.Outlined.StarBorder,
+                    contentDescription = "Тільки обрані",
+                    tint = if(showFavoritesOnly) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline
+                )
+            }
+            IconButton(onClick = onToggleSort) {
+                Icon(Icons.Default.SortByAlpha, "Сортування", tint = if(isSortAsc) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+            }
+            IconButton(onClick = onToggleFolders) {
+                Icon(Icons.Default.Folder, "Папки", tint = if (showFolders) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+            }
+        }
+    }
+}
+
+@Composable
+fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit) {
+    val dateString = if (DateUtils.isToday(note.updatedAt)) SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(note.updatedAt)) else SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(note.updatedAt))
+    Column(modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() }.padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp).padding(end = 4.dp)) {
+                Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
+            Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit) {
+    val dateString = if (DateUtils.isToday(note.updatedAt)) SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(note.updatedAt)) else SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(note.updatedAt))
+    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
+            Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+        }
+
+        IconButton(onClick = onToggleFavorite) {
+            Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
         }
     }
 }
