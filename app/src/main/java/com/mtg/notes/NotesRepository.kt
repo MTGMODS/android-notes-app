@@ -1,50 +1,28 @@
 package com.mtg.notes
 
-class NotesRepository {
-    private val activeNotes = mutableListOf<Note>()
+import kotlinx.coroutines.flow.Flow
 
-    init {
-        activeNotes.add(Note(title = "Ідея для додатку", content = "Зробити MVVM архітектуру", folder = Folder.WORK))
-        activeNotes.add(Note(title = "Купити в магазині", content = "Молоко, хліб, яйця", folder = Folder.PERSONAL))
+class NotesRepository(private val noteDao: NoteDao) {
+
+    fun getAllNotesFlow(): Flow<List<Note>> {
+        return noteDao.getAllNotesFlow()
     }
 
-    fun getAllNotes(): List<Note> {
-        return activeNotes.toList()
+    suspend fun getNoteById(id: Int): Note? {
+        return noteDao.getNoteById(id)
     }
 
-    fun getNoteById(id: Int): Note? {
-        return activeNotes.find { it.id == id }
+    suspend fun addNote(note: Note): Long {
+        return noteDao.insertNote(note)
     }
 
-    fun addNote(note: Note) {
-        activeNotes.add(note)
+    suspend fun deleteNote(note: Note) {
+        noteDao.deleteNote(note)
     }
 
-    fun deleteNote(note: Note) {
-        activeNotes.remove(note)
+    suspend fun updateNote(note: Note) {
+        noteDao.updateNote(note)
     }
-
-    fun updateNote(note: Note) {
-        val index = activeNotes.indexOfFirst { it.id == note.id }
-        if (index != -1) {
-            activeNotes[index] = note
-        }
-    }
-
-    fun getActiveFolders(): Set<Folder> {
-        return activeNotes.mapNotNull { it.folder }.toSet()
-    }
-
-    fun getFolderCounts(): Map<Folder, Int> {
-        return activeNotes.mapNotNull { it.folder }.groupingBy { it }.eachCount()
-    }
-
-    fun getNotesFiltered(selectedFolder: Folder?): List<Note> {
-        val filtered =
-            if (selectedFolder == null) activeNotes else activeNotes.filter { it.folder == selectedFolder }
-        return filtered.sortedByDescending { it.updatedAt }
-    }
-
 }
 
-val globalNotesRepository = NotesRepository()
+lateinit var globalNotesRepository: NotesRepository
