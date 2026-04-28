@@ -54,6 +54,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mtg.notes.ui.theme.NotesTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -69,7 +70,8 @@ class MainActivity : ComponentActivity() {
         globalSettingsRepository = SettingsRepository(applicationContext.dataStore)
 
         setContent {
-            NotesTheme {
+            val isDarkTheme by globalSettingsRepository.isDarkThemeFlow.collectAsState(initial = isSystemInDarkTheme())
+            NotesTheme(darkTheme = isDarkTheme) {
                 AppNavigation()
             }
         }
@@ -82,13 +84,19 @@ fun AppNavigation() {
     val mainViewModel: MainViewModel = viewModel()
     val profileViewModel: ProfileViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = Screen.Onboarding.route) {
+    val savedUserName by globalSettingsRepository.userNameFlow.collectAsState(initial = null)
+    if (savedUserName == null) return
+
+    val startDestination = if (savedUserName!!.isNotBlank()) Screen.Main.createRoute(savedUserName!!) else Screen.Onboarding.route
+
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(Screen.Onboarding.route) { backStackEntry ->
             val savedName by backStackEntry.savedStateHandle.getStateFlow("userName", "").collectAsState()
             OnboardingScreen(
                 savedName = savedName,
                 onEnterNameClick = { navController.navigate(Screen.NameInput.route) },
                 onStartClick = { name ->
+                    profileViewModel.updateName(name)
                     navController.navigate(Screen.Main.createRoute(name)) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
