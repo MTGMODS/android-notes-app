@@ -21,12 +21,10 @@ class MainViewModel : ViewModel() {
     private val _isSortAscending = MutableStateFlow(true)
     val isSortAscending: StateFlow<Boolean> = _isSortAscending.asStateFlow()
 
-    private val _refreshTrigger = MutableStateFlow(0)
-
     val notesToShow: StateFlow<List<Note>> = combine(
-        _refreshTrigger, _searchQuery, _selectedFolder, _isSortAscending
-    ) { _, query, folder, sortAsc ->
-        var filtered = repository.getAllNotes()
+        repository.getAllNotesFlow(), _searchQuery, _selectedFolder, _isSortAscending
+    ) { allNotes, query, folder, sortAsc ->
+        var filtered = allNotes
 
         if (folder != null) filtered = filtered.filter { it.folder == folder }
         if (query.isNotEmpty()) {
@@ -34,52 +32,51 @@ class MainViewModel : ViewModel() {
                 it.title.contains(query, ignoreCase = true) || it.content.contains(query, ignoreCase = true)
             }
         }
-
-        if (sortAsc) filtered.sortedBy { it.title } else filtered.sortedByDescending { it.title }
+        if (sortAsc) filtered.sortedBy { it.updatedAt } else filtered.sortedByDescending { it.updatedAt }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val activeFolders: StateFlow<Set<Folder>> = _refreshTrigger
-        .map { repository.getAllNotes().mapNotNull { it.folder }.toSet() }
+    val activeFolders: StateFlow<Set<Folder>> = repository.getAllNotesFlow()
+        .map { notes -> notes.mapNotNull { it.folder }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    val folderCounts: StateFlow<Map<Folder, Int>> = _refreshTrigger
-        .map { repository.getAllNotes().mapNotNull { it.folder }.groupingBy { it }.eachCount() }
+    val folderCounts: StateFlow<Map<Folder, Int>> = repository.getAllNotesFlow()
+        .map { notes -> notes.mapNotNull { it.folder }.groupingBy { it }.eachCount() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val totalNotesCount: StateFlow<Int> = _refreshTrigger
-        .map { repository.getAllNotes().size }
+    val totalNotesCount: StateFlow<Int> = repository.getAllNotesFlow()
+        .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    init {
-        loadData()
-    }
+    init { loadData() }
 
     private fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
-            delay(2000)
-            refreshNotes()
+            delay(1000)
             _isLoading.value = false
         }
-    }
-
-    fun refreshNotes() {
-        _refreshTrigger.value += 1
     }
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
     fun selectFolder(folder: Folder?) { _selectedFolder.value = folder }
     fun toggleSortOrder() { _isSortAscending.value = !_isSortAscending.value }
 
-    fun deleteNote(note: Note) {
-        repository.deleteNote(note)
-        refreshNotes()
+    fun createNote(onCreated: (Int) -> Unit) {
+        viewModelScope.launch {
+            val newNote = Note(title = "Нова нотатка", content = "", folder = _selectedFolder.value)
+            val id = repository.addNote(newNote).toInt()
+            onCreated(id)
+        }
     }
 
-    fun createNote(): Int {
-        val newNote = Note("")
-        repository.addNote(newNote)
-        refreshNotes()
-        return newNote.id
+    fun deleteNote(note: Note) {
+        viewModelScope.launch { repository.deleteNote(note) }
+    }
+
+    fun toggleFavorite(note: Note) {
+        viewModelScope.launch {
+            val updatedNote = note.copy(isFavorite = !note.isFavorite)
+            repository.updateNote(updatedNote)
+        }
     }
 }
