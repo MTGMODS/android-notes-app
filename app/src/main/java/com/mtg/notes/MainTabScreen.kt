@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Switch
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,12 +56,10 @@ fun MainTabScreen(
     val folderCounts by mainViewModel.folderCounts.collectAsStateWithLifecycle()
     val totalNotesCount by mainViewModel.totalNotesCount.collectAsStateWithLifecycle()
 
-
     val currentUserName by profileViewModel.userName.collectAsStateWithLifecycle()
 
-    LaunchedEffect(userName) {
-        profileViewModel.setInitialNameIfNeeded(userName)
-    }
+    val isDarkTheme by profileViewModel.isDarkTheme.collectAsStateWithLifecycle()
+    val isSortAscendingGlobal by profileViewModel.isSortAscending.collectAsStateWithLifecycle()
 
     var currentTab by rememberSaveable { mutableStateOf(BottomTab.LIST) }
     var showFolders by rememberSaveable { mutableStateOf(true) }
@@ -149,7 +148,11 @@ fun MainTabScreen(
                     BottomTab.PROFILE -> {
                         ProfileTab(
                             userName = currentUserName,
-                            onNameChange = { profileViewModel.updateName(it) }
+                            onNameChange = { profileViewModel.updateName(it) },
+                            isDarkTheme = isDarkTheme,
+                            onToggleTheme = { profileViewModel.toggleTheme() },
+                            isSortAscending = isSortAscendingGlobal,
+                            onToggleSort = { profileViewModel.toggleSortOrder() }
                         )
                     }
                 }
@@ -445,7 +448,14 @@ fun DeleteConfirmationDialog(noteTitle: String, onConfirm: () -> Unit, onDismiss
 }
 
 @Composable
-fun ProfileTab(userName: String, onNameChange: (String) -> Unit) {
+fun ProfileTab(
+    userName: String,
+    onNameChange: (String) -> Unit,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit,
+    isSortAscending: Boolean,
+    onToggleSort: () -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -454,7 +464,7 @@ fun ProfileTab(userName: String, onNameChange: (String) -> Unit) {
         Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Профіль користувача", style = MaterialTheme.typography.headlineMedium)
+        Text("Профіль", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -466,15 +476,37 @@ fun ProfileTab(userName: String, onNameChange: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
+
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Інформація про додаток", style = MaterialTheme.typography.titleMedium)
+                Text("Налаштування", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Темна тема")
+                    Switch(checked = isDarkTheme, onCheckedChange = { onToggleTheme() })
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Сортування А-Я (за замовчуванням)")
+                    Switch(checked = isSortAscending, onCheckedChange = { onToggleSort() })
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Інформація", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Назва: Notes App (Лаба 7)")
-                Text("Версія: 7.0.0")
-                Text("Розробник: Marher Bohdan")
+                Text("Назва: Notes App (Лаба 8)")
+                Text("Версія: 8.0.0")
+                Text("Локальне сховище: Room + DataStore")
             }
         }
     }
