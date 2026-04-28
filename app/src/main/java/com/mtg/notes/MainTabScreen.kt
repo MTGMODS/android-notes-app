@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.background
@@ -58,7 +57,6 @@ fun MainTabScreen(
     mainViewModel: MainViewModel = viewModel(),
     profileViewModel: ProfileViewModel = viewModel()
 ) {
-    val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
     val notesToShow by mainViewModel.notesToShow.collectAsStateWithLifecycle()
     val searchQuery by mainViewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedFolder by mainViewModel.selectedFolder.collectAsStateWithLifecycle()
@@ -66,7 +64,6 @@ fun MainTabScreen(
     val folderCounts by mainViewModel.folderCounts.collectAsStateWithLifecycle()
     val totalNotesCount by mainViewModel.totalNotesCount.collectAsStateWithLifecycle()
 
-    // Налаштування з DataStore
     val isSortAscending by mainViewModel.isSortAscending.collectAsStateWithLifecycle()
     val showFavoritesOnly by mainViewModel.showFavoritesOnly.collectAsStateWithLifecycle()
     val currentUserName by profileViewModel.userName.collectAsStateWithLifecycle()
@@ -95,7 +92,7 @@ fun MainTabScreen(
             }
         },
         floatingActionButton = {
-            if (currentTab != BottomTab.PROFILE && !isLoading) {
+            if (currentTab != BottomTab.PROFILE) {
                 MainFab(
                     isExpanded = isFabExpanded,
                     onToggle = { isFabExpanded = !isFabExpanded },
@@ -111,68 +108,62 @@ fun MainTabScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize().statusBarsPadding()) {
-            if (isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            when (currentTab) {
+                BottomTab.LIST -> {
+                    ListTabContent(
+                        notes = notesToShow,
+                        totalNotesCount = totalNotesCount,
+                        searchQuery = searchQuery,
+                        onQueryChange = { mainViewModel.updateSearchQuery(it) },
+                        folders = activeFolders,
+                        counts = folderCounts,
+                        selectedFolder = selectedFolder,
+                        onFolderSelect = { mainViewModel.selectFolder(it) },
+                        onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
+                        onDeleteRequest = { noteToDelete = it },
+                        onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                        showFolders = showFolders,
+                        onToggleFolders = {
+                            showFolders = !showFolders
+                            if (!showFolders) mainViewModel.selectFolder(null)
+                        },
+                        isSortAsc = isSortAscending,
+                        onToggleSort = { mainViewModel.toggleSortOrder() },
+                        showFavoritesOnly = showFavoritesOnly,
+                        onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                    )
                 }
-            } else {
-                when (currentTab) {
-                    BottomTab.LIST -> {
-                        ListTabContent(
-                            notes = notesToShow,
-                            totalNotesCount = totalNotesCount,
-                            searchQuery = searchQuery,
-                            onQueryChange = { mainViewModel.updateSearchQuery(it) },
-                            folders = activeFolders,
-                            counts = folderCounts,
-                            selectedFolder = selectedFolder,
-                            onFolderSelect = { mainViewModel.selectFolder(it) },
-                            onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                            onDeleteRequest = { noteToDelete = it },
-                            onToggleFavorite = { mainViewModel.toggleFavorite(it) },
-                            showFolders = showFolders,
-                            onToggleFolders = {
-                                showFolders = !showFolders
-                                if (!showFolders) mainViewModel.selectFolder(null)
-                            },
-                            isSortAsc = isSortAscending,
-                            onToggleSort = { mainViewModel.toggleSortOrder() },
-                            showFavoritesOnly = showFavoritesOnly,
-                            onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
-                        )
-                    }
-                    BottomTab.GRID -> {
-                        GridTabContent(
-                            notes = notesToShow,
-                            totalNotesCount = totalNotesCount,
-                            folders = activeFolders,
-                            counts = folderCounts,
-                            selectedFolder = selectedFolder,
-                            isSortAsc = isSortAscending,
-                            onToggleSort = { mainViewModel.toggleSortOrder() },
-                            onFolderSelect = { mainViewModel.selectFolder(it) },
-                            onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                            onDeleteRequest = { noteToDelete = it },
-                            onToggleFavorite = { mainViewModel.toggleFavorite(it) },
-                            showFolders = showFolders,
-                            onToggleFolders = {
-                                showFolders = !showFolders
-                                if (!showFolders) mainViewModel.selectFolder(null)
-                            },
-                            showFavoritesOnly = showFavoritesOnly,
-                            onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
-                        )
-                    }
-                    BottomTab.PROFILE -> {
-                        ProfileTab(
-                            userName = currentUserName.ifEmpty { userName },
-                            onNameChange = { profileViewModel.updateName(it) },
-                            isDarkTheme = isDarkTheme,
-                            onToggleTheme = { profileViewModel.toggleTheme() },
-                            isSortAscending = isSortAscending,
-                            onToggleSort = { mainViewModel.toggleSortOrder() }
-                        )
-                    }
+                BottomTab.GRID -> {
+                    GridTabContent(
+                        notes = notesToShow,
+                        totalNotesCount = totalNotesCount,
+                        folders = activeFolders,
+                        counts = folderCounts,
+                        selectedFolder = selectedFolder,
+                        isSortAsc = isSortAscending,
+                        onToggleSort = { mainViewModel.toggleSortOrder() },
+                        onFolderSelect = { mainViewModel.selectFolder(it) },
+                        onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
+                        onDeleteRequest = { noteToDelete = it },
+                        onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                        showFolders = showFolders,
+                        onToggleFolders = {
+                            showFolders = !showFolders
+                            if (!showFolders) mainViewModel.selectFolder(null)
+                        },
+                        showFavoritesOnly = showFavoritesOnly,
+                        onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                    )
+                }
+                BottomTab.PROFILE -> {
+                    ProfileTab(
+                        userName = currentUserName.ifEmpty { userName },
+                        onNameChange = { profileViewModel.updateName(it) },
+                        isDarkTheme = isDarkTheme,
+                        onToggleTheme = { profileViewModel.toggleTheme() },
+                        isSortAscending = isSortAscending,
+                        onToggleSort = { mainViewModel.toggleSortOrder() }
+                    )
                 }
             }
         }
@@ -315,7 +306,6 @@ fun NotesHeader(
             }
         }
         Row {
-            // Кнопка фільтру "Тільки обрані"
             IconButton(onClick = onToggleFavoritesFilter) {
                 Icon(
                     imageVector = if(showFavoritesOnly) Icons.Default.Star else Icons.Outlined.StarBorder,
@@ -340,7 +330,6 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
 
-            // Зірочка обраного
             IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp).padding(end = 4.dp)) {
                 Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
             }
@@ -369,7 +358,6 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
             Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
 
-        // Зірочка обраного
         IconButton(onClick = onToggleFavorite) {
             Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
         }

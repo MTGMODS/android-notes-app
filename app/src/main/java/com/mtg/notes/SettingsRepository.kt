@@ -49,7 +49,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun toggleTheme() {
         dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.IS_DARK_THEME] ?: false
+            val current = preferences[PreferencesKeys.IS_DARK_THEME] ?: true
             preferences[PreferencesKeys.IS_DARK_THEME] = !current
         }
     }
