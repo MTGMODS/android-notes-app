@@ -3,7 +3,6 @@ package com.mtg.notes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,14 +20,11 @@ class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
     private val _uiState = MutableStateFlow<NoteDetailsState>(NoteDetailsState.Loading)
     val uiState: StateFlow<NoteDetailsState> = _uiState.asStateFlow()
 
-    init {
-        loadNote()
-    }
+    init { loadNote() }
 
     private fun loadNote() {
         viewModelScope.launch {
             _uiState.value = NoteDetailsState.Loading
-            delay(500)
 
             val note = repository.getNoteById(noteId)
             if (note != null) {
@@ -43,19 +39,22 @@ class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
         val currentState = _uiState.value
         if (currentState is NoteDetailsState.Success) {
             val oldNote = currentState.note
-            val updatedNote = Note(
-                id = oldNote.id,
+            val updatedNote = oldNote.copy(
                 title = title,
                 content = content,
-                folder = folder
+                folder = folder,
+                updatedAt = System.currentTimeMillis()
             )
-            updatedNote.updatedAt = System.currentTimeMillis()
-            repository.updateNote(updatedNote)
-            _uiState.value = NoteDetailsState.Success(updatedNote)
+
+            viewModelScope.launch {
+                repository.updateNote(updatedNote)
+                _uiState.value = NoteDetailsState.Success(updatedNote)
+            }
         }
     }
 
     class Factory(private val noteId: Int) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return NoteDetailsViewModel(noteId) as T
         }
