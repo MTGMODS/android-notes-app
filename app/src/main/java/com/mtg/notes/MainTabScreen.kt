@@ -44,6 +44,7 @@ import java.util.Date
 import java.util.Locale
 import android.text.format.DateUtils
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
@@ -56,7 +57,8 @@ fun MainTabScreen(
     userName: String,
     globalNavController: NavController,
     mainViewModel: MainViewModel = viewModel(),
-    profileViewModel: ProfileViewModel = viewModel()
+    profileViewModel: ProfileViewModel = viewModel(),
+    windowSizeClass: WindowSizeClass
 ) {
     val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
     val isOffline by mainViewModel.isOffline.collectAsStateWithLifecycle()

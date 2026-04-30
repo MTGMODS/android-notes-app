@@ -15,8 +15,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mtg.notes.ui.theme.NotesTheme
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -29,15 +32,16 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val isDarkTheme by globalSettingsRepository.isDarkThemeFlow.collectAsState(initial = isSystemInDarkTheme())
+            val windowSizeClass = calculateWindowSizeClass(this)
             NotesTheme(darkTheme = isDarkTheme) {
-                AppNavigation()
+                AppNavigation(windowSizeClass)
             }
         }
     }
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(windowSizeClass: androidx.compose.material3.windowsizeclass.WindowSizeClass) {
     val navController = rememberNavController()
     val mainViewModel: MainViewModel = viewModel()
     val profileViewModel: ProfileViewModel = viewModel()
@@ -75,7 +79,8 @@ fun AppNavigation() {
                 userName = userName,
                 globalNavController = navController,
                 mainViewModel = mainViewModel,
-                profileViewModel = profileViewModel
+                profileViewModel = profileViewModel,
+                windowSizeClass = windowSizeClass
             )
         }
 
