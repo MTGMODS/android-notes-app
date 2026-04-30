@@ -37,6 +37,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.zIndex
 import com.mtg.notes.ui.theme.NotesTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -57,6 +58,8 @@ fun MainTabScreen(
     mainViewModel: MainViewModel = viewModel(),
     profileViewModel: ProfileViewModel = viewModel()
 ) {
+    val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
+    val isOffline by mainViewModel.isOffline.collectAsStateWithLifecycle()
     val notesToShow by mainViewModel.notesToShow.collectAsStateWithLifecycle()
     val searchQuery by mainViewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedFolder by mainViewModel.selectedFolder.collectAsStateWithLifecycle()
@@ -75,8 +78,15 @@ fun MainTabScreen(
     var isFabExpanded by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<Note?>(null) }
     var showFolderDialog by remember { mutableStateOf(false) }
-    var folderNameInput by remember { mutableStateOf("") }
+    var showCreateNoteDialog by remember { mutableStateOf(false) } // ЗАВДАННЯ 4
+
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        mainViewModel.errorMessage.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -92,81 +102,86 @@ fun MainTabScreen(
             }
         },
         floatingActionButton = {
-            if (currentTab != BottomTab.PROFILE) {
+            if (currentTab != BottomTab.PROFILE && !isLoading) {
                 MainFab(
                     isExpanded = isFabExpanded,
                     onToggle = { isFabExpanded = !isFabExpanded },
                     onCreateFolder = { isFabExpanded = false; showFolderDialog = true },
-                    onCreateNote = {
-                        isFabExpanded = false
-                        mainViewModel.createNote { newId ->
-                            globalNavController.navigate(Screen.NoteDetails.createRoute(newId))
-                        }
-                    }
+                    onCreateNote = { isFabExpanded = false; showCreateNoteDialog = true }
                 )
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize().statusBarsPadding()) {
-            when (currentTab) {
-                BottomTab.LIST -> {
-                    ListTabContent(
-                        notes = notesToShow,
-                        totalNotesCount = totalNotesCount,
-                        searchQuery = searchQuery,
-                        onQueryChange = { mainViewModel.updateSearchQuery(it) },
-                        folders = activeFolders,
-                        counts = folderCounts,
-                        selectedFolder = selectedFolder,
-                        onFolderSelect = { mainViewModel.selectFolder(it) },
-                        onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                        onDeleteRequest = { noteToDelete = it },
-                        onToggleFavorite = { mainViewModel.toggleFavorite(it) },
-                        showFolders = showFolders,
-                        onToggleFolders = {
-                            showFolders = !showFolders
-                            if (!showFolders) mainViewModel.selectFolder(null)
-                        },
-                        isSortAsc = isSortAscending,
-                        onToggleSort = { mainViewModel.toggleSortOrder() },
-                        showFavoritesOnly = showFavoritesOnly,
-                        onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
-                    )
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (isOffline) {
+                    OfflineBanner(onRetry = { mainViewModel.refreshData() })
                 }
-                BottomTab.GRID -> {
-                    GridTabContent(
-                        notes = notesToShow,
-                        totalNotesCount = totalNotesCount,
-                        folders = activeFolders,
-                        counts = folderCounts,
-                        selectedFolder = selectedFolder,
-                        isSortAsc = isSortAscending,
-                        onToggleSort = { mainViewModel.toggleSortOrder() },
-                        onFolderSelect = { mainViewModel.selectFolder(it) },
-                        onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                        onDeleteRequest = { noteToDelete = it },
-                        onToggleFavorite = { mainViewModel.toggleFavorite(it) },
-                        showFolders = showFolders,
-                        onToggleFolders = {
-                            showFolders = !showFolders
-                            if (!showFolders) mainViewModel.selectFolder(null)
-                        },
-                        showFavoritesOnly = showFavoritesOnly,
-                        onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
-                    )
+
+                when (currentTab) {
+                    BottomTab.LIST -> {
+                        ListTabContent(
+                            notes = notesToShow, totalNotesCount = totalNotesCount, searchQuery = searchQuery,
+                            onQueryChange = { mainViewModel.updateSearchQuery(it) }, folders = activeFolders,
+                            counts = folderCounts, selectedFolder = selectedFolder,
+                            onFolderSelect = { mainViewModel.selectFolder(it) },
+                            onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
+                            onDeleteRequest = { noteToDelete = it }, onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                            showFolders = showFolders, onToggleFolders = {
+                                showFolders = !showFolders
+                                if (!showFolders) mainViewModel.selectFolder(null)
+                            },
+                            isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
+                            showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                        )
+                    }
+                    BottomTab.GRID -> {
+
+                        GridTabContent(
+                            notes = notesToShow, totalNotesCount = totalNotesCount, folders = activeFolders,
+                            counts = folderCounts, selectedFolder = selectedFolder,
+                            isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
+                            onFolderSelect = { mainViewModel.selectFolder(it) },
+                            onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
+                            onDeleteRequest = { noteToDelete = it }, onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                            showFolders = showFolders, onToggleFolders = {
+                                showFolders = !showFolders
+                                if (!showFolders) mainViewModel.selectFolder(null)
+                            },
+                            showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                        )
+                    }
+                    BottomTab.PROFILE -> {
+                        ProfileTab(
+                            userName = currentUserName.ifEmpty { userName }, onNameChange = { profileViewModel.updateName(it) },
+                            isDarkTheme = isDarkTheme, onToggleTheme = { profileViewModel.toggleTheme() },
+                            isSortAscending = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() }
+                        )
+                    }
                 }
-                BottomTab.PROFILE -> {
-                    ProfileTab(
-                        userName = currentUserName.ifEmpty { userName },
-                        onNameChange = { profileViewModel.updateName(it) },
-                        isDarkTheme = isDarkTheme,
-                        onToggleTheme = { profileViewModel.toggleTheme() },
-                        isSortAscending = isSortAscending,
-                        onToggleSort = { mainViewModel.toggleSortOrder() }
-                    )
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)).zIndex(10f).clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
+    }
+
+
+    if (showCreateNoteDialog) {
+        CreateNoteDialog(
+            onDismiss = { showCreateNoteDialog = false },
+            onConfirm = { title, content ->
+                showCreateNoteDialog = false
+                mainViewModel.createNote(title, content, mainViewModel.selectedFolder.value) {}
+            }
+        )
     }
 
     if (noteToDelete != null) {
@@ -179,30 +194,43 @@ fun MainTabScreen(
             onDismiss = { noteToDelete = null }
         )
     }
+}
 
-    if (showFolderDialog) {
-        AlertDialog(
-            onDismissRequest = { showFolderDialog = false },
-            title = { Text("Нова папка") },
-            text = {
-                OutlinedTextField(
-                    value = folderNameInput,
-                    onValueChange = { folderNameInput = it },
-                    singleLine = true,
-                    placeholder = { Text("Назва папки") }
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    Toast.makeText(context, "Симуляція: $folderNameInput", Toast.LENGTH_SHORT).show()
-                    folderNameInput = ""; showFolderDialog = false
-                }) { Text("Створити") }
-            },
-            dismissButton = {
-                TextButton(onClick = { folderNameInput = ""; showFolderDialog = false }) { Text("Відміна") }
-            }
-        )
+@Composable
+fun OfflineBanner(onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("Офлайн режим. Кешовані дані.", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium)
+        TextButton(onClick = onRetry) {
+            Text("Повторити", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
+        }
     }
+}
+
+
+@Composable
+fun CreateNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Створити нотатку") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Назва") }, singleLine = true)
+                OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Текст (опціонально)") }, modifier = Modifier.height(100.dp))
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(if (title.isBlank()) "Без назви" else title, content) }) { Text("Зберегти") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Скасувати") }
+        }
+    )
 }
 
 @Composable
