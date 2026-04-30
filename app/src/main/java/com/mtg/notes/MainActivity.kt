@@ -22,7 +22,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val database = NotesDatabase.getDatabase(applicationContext, lifecycleScope)
-        globalNotesRepository = NotesRepository(database.noteDao())
+        val apiService = com.mtg.notes.network.ApiClient.apiService
+        globalNotesRepository = NotesRepository(database.noteDao(), apiService)
 
         globalSettingsRepository = SettingsRepository(applicationContext.dataStore)
 
