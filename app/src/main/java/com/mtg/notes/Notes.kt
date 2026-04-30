@@ -19,7 +19,10 @@ data class Note(
     var content: String,
     var folder: Folder? = null,
     var isFavorite: Boolean = false,
-    var updatedAt: Long = System.currentTimeMillis()
+    var updatedAt: Long = System.currentTimeMillis(),
+    var sourceUrl: String = "",
+    var estimatedHours: Int = 0,
+    var priority: Int = 1
 ) {
     fun getPreviewText(): String {
         return if (content.length > 25) content.substring(0, 25) + "..." else content

@@ -10,7 +10,10 @@ data class NetworkNote(
     @SerializedName("content") val content: String?,
     @SerializedName("folder") val folder: String?,
     @SerializedName("isFavorite") val isFavorite: Boolean?,
-    @SerializedName("updatedAt") val updatedAt: Long?
+    @SerializedName("updatedAt") val updatedAt: Long?,
+    @SerializedName("sourceUrl") val sourceUrl: String?,
+    @SerializedName("estimatedHours") val estimatedHours: Int?,
+    @SerializedName("priority") val priority: Int?
 )
 
 
@@ -21,7 +24,10 @@ fun NetworkNote.toLocalNote(): Note {
         content = this.content ?: "",
         folder = try { this.folder?.let { Folder.valueOf(it) } } catch (e: Exception) { null },
         isFavorite = this.isFavorite ?: false,
-        updatedAt = this.updatedAt ?: System.currentTimeMillis()
+        updatedAt = this.updatedAt ?: System.currentTimeMillis(),
+        sourceUrl = this.sourceUrl ?: "",
+        estimatedHours = this.estimatedHours ?: 0,
+        priority = this.priority ?: 1
     )
 }
 
@@ -31,6 +37,9 @@ fun Note.toNetworkNote(): NetworkNote {
         content = this.content,
         folder = this.folder?.name,
         isFavorite = this.isFavorite,
-        updatedAt = this.updatedAt
+        updatedAt = this.updatedAt,
+        sourceUrl = this.sourceUrl,
+        estimatedHours = this.estimatedHours,
+        priority = this.priority
     )
 }

@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-@Database(entities = [Note::class], version = 1, exportSchema = false)
+@Database(entities = [Note::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class NotesDatabase : RoomDatabase() {
 
@@ -23,11 +23,8 @@ abstract class NotesDatabase : RoomDatabase() {
             INSTANCE?.let { database ->
                 scope.launch {
                     val dao = database.noteDao()
-                    dao.insertNote(Note(title = "Ідея для додатку", content = "Зробити MVVM архітектуру з Room", folder = Folder.WORK))
+                    dao.insertNote(Note(title = "Ідея для додатку", content = "Зробити MVVM архітектуру з Room", folder = Folder.WORK, priority = 8, estimatedHours = 10))
                     dao.insertNote(Note(title = "Список покупок", content = "Молоко, хліб, банани", folder = Folder.PERSONAL))
-                    dao.insertNote(Note(title = "Книги на літо", content = "Гаррі Поттер, Дюна, Відьмак", folder = Folder.IDEAS, isFavorite = true))
-                    dao.insertNote(Note(title = "Університет", content = "Закрити семестр без перездач", folder = Folder.STUDY))
-                    dao.insertNote(Note(title = "Тренування", content = "Записатися в спортзал", folder = Folder.PERSONAL, isFavorite = true))
                 }
             }
         }
@@ -43,7 +40,7 @@ abstract class NotesDatabase : RoomDatabase() {
                     context.applicationContext,
                     NotesDatabase::class.java,
                     "notes_database"
-                ).addCallback(NotesDatabaseCallback(scope)).build()
+                ).fallbackToDestructiveMigration().addCallback(NotesDatabaseCallback(scope)).build()
                 INSTANCE = instance
                 instance
             }
