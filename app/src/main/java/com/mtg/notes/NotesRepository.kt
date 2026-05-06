@@ -66,7 +66,12 @@ class NotesRepository(
     }
 
     suspend fun updateNote(note: Note) {
-        noteDao.updateNote(note)
+        try {
+            apiService.updateNote(note.id.toString(), note.toNetworkNote())
+            noteDao.updateNote(note)
+        } catch (e: Exception) {
+            noteDao.updateNote(note)
+        }
     }
 }
 
