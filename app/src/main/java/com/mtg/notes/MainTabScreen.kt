@@ -501,12 +501,15 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(horizontalAlignment = Alignment.End) {
+                    if (note.isFavorite) Icon(Icons.Default.Star, "Обране", tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
                     Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
                     Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                 }
