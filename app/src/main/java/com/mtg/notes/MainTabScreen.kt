@@ -43,9 +43,21 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.text.format.DateUtils
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import kotlin.math.roundToInt
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
@@ -522,153 +534,181 @@ fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit, windowSizeClass: WindowSi
     val viewModel: NoteDetailsViewModel = viewModel(key = "note_details_$noteId", factory = NoteDetailsViewModel.Factory(noteId))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(state) { if (state is NoteDetailsState.Saved) onExit() }
+
     when (val s = state) {
-        is NoteDetailsState.Loading -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
-        is NoteDetailsState.Error -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(s.message, color = MaterialTheme.colorScheme.error)
-            }
-        }
-        is NoteDetailsState.Success -> {
+        is NoteDetailsState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        is NoteDetailsState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(s.message, color = MaterialTheme.colorScheme.error) }
+        is NoteDetailsState.Editing -> {
             NoteEditorContent(
-                note = s.note,
-                onSave = { t, c, f -> viewModel.updateNote(t, c, f) },
-                onExit = onExit
+                formState = s.formState,
+                viewModel = viewModel,
+                onExit = onExit,
+                windowSizeClass = windowSizeClass
             )
         }
+        is NoteDetailsState.Saved -> {}
     }
 }
 
 @Composable
-fun NoteEditorContent(note: Note, onSave: (String, String, Folder?) -> Unit, onExit: () -> Unit) {
-    var title by remember { mutableStateOf(note.title) }
-    var content by remember { mutableStateOf(note.content) }
-    var currentFolder by remember { mutableStateOf(note.folder) }
-    var isDropdownExpanded by remember { mutableStateOf(false) }
+fun NoteEditorContent(formState: NoteFormState, viewModel: NoteDetailsViewModel, onExit: () -> Unit, windowSizeClass: WindowSizeClass?) {
+    val focusManager = LocalFocusManager.current
+    val isTablet = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded
 
-    LaunchedEffect(title, content, currentFolder) {
-        onSave(title, content, currentFolder)
-    }
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .statusBarsPadding()
+            .pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding() // Автоскрол при появі клавіатури!
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            horizontalAlignment = if (isTablet) Alignment.CenterHorizontally else Alignment.Start
         ) {
-            IconButton(
-                onClick = onExit,
-                modifier = Modifier.background(
-                    MaterialTheme.colorScheme.surfaceVariant,
-                    CircleShape
-                ).size(40.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Назад",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
-            Box {
-                OutlinedButton(
-                    onClick = { isDropdownExpanded = true },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            Column(
+                modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onExit,
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape).size(40.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.saveNote() },
+                            enabled = formState.isValid,
+                            modifier = Modifier.background(
+                                if (formState.isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, CircleShape
+                            ).size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Save,
+                                contentDescription = "Зберегти",
+                                tint = if (formState.isValid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+
                     Text(
-                        "📁 " + (currentFolder?.displayName ?: "Без папки"),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge
+                        text = if (formState.title.isEmpty()) "Створення нотатки" else "Редагування",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
-                DropdownMenu(
-                    expanded = isDropdownExpanded,
-                    onDismissRequest = { isDropdownExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Без папки") },
-                        onClick = { currentFolder = null; isDropdownExpanded = false })
-                    Folder.entries.forEach { folder ->
-                        DropdownMenuItem(
-                            text = { Text(folder.displayName) },
-                            onClick = { currentFolder = folder; isDropdownExpanded = false })
+                Text("Основна інформація", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = formState.title,
+                            onValueChange = { viewModel.updateState { s -> s.copy(title = it) } },
+                            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateTitle() },
+                            label = { Text("Назва нотатки *") },
+                            isError = formState.titleError != null,
+                            supportingText = { formState.titleError?.let { Text(it) } },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = formState.content,
+                            onValueChange = { viewModel.updateState { s -> s.copy(content = it) } },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                            label = { Text("Контент нотатки") },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                        )
+                    }
+                }
+
+                Text("Додаткові параметри", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = formState.sourceUrl,
+                            onValueChange = { viewModel.updateState { s -> s.copy(sourceUrl = it) } },
+                            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateSourceUrl() },
+                            label = { Text("URL Джерела *") },
+                            placeholder = { Text("https://...") },
+                            isError = formState.sourceUrlError != null,
+                            supportingText = { formState.sourceUrlError?.let { Text(it) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = formState.estimatedHours,
+                            onValueChange = { viewModel.updateState { s -> s.copy(estimatedHours = it) } },
+                            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateEstimatedHours() },
+                            label = { Text("Оцінка часу (години) *") },
+                            isError = formState.estimatedHoursError != null,
+                            supportingText = { formState.estimatedHoursError?.let { Text(it) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }), // Приховує клавіатуру
+                            singleLine = true
+                        )
+                        var isDropdownExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedTextField(
+                                label = { Text("Вибрана папка *") },
+                                value = formState.folder?.displayName ?: "Оберіть папку *",
+                                onValueChange = {},
+                                modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateFolder() }.clickable { isDropdownExpanded = true },
+                                readOnly = true,
+                                enabled = false,
+                                isError = formState.folderError != null,
+                                supportingText = { formState.folderError?.let { Text(it) } },
+                                colors = TextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface, disabledContainerColor = Color.Transparent)
+                            )
+                            DropdownMenu(expanded = isDropdownExpanded, onDismissRequest = { isDropdownExpanded = false }) {
+                                Folder.entries.forEach { folder ->
+                                    DropdownMenuItem(text = { Text(folder.displayName) }, onClick = {
+                                        viewModel.updateState { s -> s.copy(folder = folder, folderError = null) }
+                                        isDropdownExpanded = false
+                                    })
+                                }
+                            }
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Додати в обране")
+                            Switch(
+                                checked = formState.isFavorite,
+                                onCheckedChange = { isFav -> viewModel.updateState { it.copy(isFavorite = isFav) } }
+                            )
+                        }
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Пріоритет: ${formState.priority.roundToInt()}")
+                                Text("(1-10)", color = MaterialTheme.colorScheme.outline)
+                            }
+                            Slider(
+                                value = formState.priority,
+                                onValueChange = { prio -> viewModel.updateState { it.copy(priority = prio) } },
+                                valueRange = 1f..10f,
+                                steps = 8
+                            )
+                        }
                     }
                 }
             }
-
-            Text(
-                "${content.length} симв.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall
-            )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            placeholder = { Text("Назва нотатки...") },
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            )
-        )
-
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 8.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        )
-
-        OutlinedTextField(
-            value = content,
-            onValueChange = { content = it },
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            placeholder = { Text("Почніть писати тут...") },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            )
-        )
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun NoteListItemLightPreview() {
-    NotesTheme(darkTheme = false) {
-        NoteListItem(
-            note = Note(title = "Купити продукти", content = "Молоко, хліб, кава", isFavorite = true),
-            onClick = {}, onDelete = {}, onToggleFavorite = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun NoteListItemDarkPreview() {
-    NotesTheme(darkTheme = true) {
-        NoteListItem(
-            note = Note(title = "Купити продукти", content = "Молоко, хліб, кава", isFavorite = false),
-            onClick = {}, onDelete = {}, onToggleFavorite = {}
-        )
     }
 }
