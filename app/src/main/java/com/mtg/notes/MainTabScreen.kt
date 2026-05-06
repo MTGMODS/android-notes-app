@@ -36,9 +36,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.zIndex
-import com.mtg.notes.ui.theme.NotesTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,6 +56,15 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import kotlin.math.roundToInt
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.ui.graphics.graphicsLayer
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
@@ -77,6 +84,7 @@ fun MainTabScreen(
     val isExpandedScreen = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
     var selectedNoteIdForPane by rememberSaveable { mutableStateOf<Int?>(null) }
 
+    val isRefreshing by mainViewModel.isRefreshing.collectAsStateWithLifecycle()
     val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
     val isOffline by mainViewModel.isOffline.collectAsStateWithLifecycle()
     val notesToShow by mainViewModel.notesToShow.collectAsStateWithLifecycle()
@@ -170,7 +178,8 @@ fun MainTabScreen(
                                     if (!showFolders) mainViewModel.selectFolder(null)
                                 },
                                 isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
-                                showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                                showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() },
+                                isRefreshing = isRefreshing, onRefresh = { mainViewModel.refreshData(isSwipe = true) }
                             )
                         }
                         BottomTab.GRID -> {
@@ -185,7 +194,8 @@ fun MainTabScreen(
                                     showFolders = !showFolders
                                     if (!showFolders) mainViewModel.selectFolder(null)
                                 },
-                                showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                                showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() },
+                                isRefreshing = isRefreshing, onRefresh = { mainViewModel.refreshData(isSwipe = true) }
                             )
                         }
                         BottomTab.PROFILE -> {
@@ -276,13 +286,15 @@ fun MainFab(isExpanded: Boolean, onToggle: () -> Unit, onCreateFolder: () -> Uni
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListTabContent(
     notes: List<Note>, totalNotesCount: Int, searchQuery: String, onQueryChange: (String) -> Unit,
     folders: Set<Folder>, counts: Map<Folder, Int>, selectedFolder: Folder?, onFolderSelect: (Folder?) -> Unit,
     onNoteClick: (Note) -> Unit, onDeleteRequest: (Note) -> Unit, onToggleFavorite: (Note) -> Unit,
     showFolders: Boolean, onToggleFolders: () -> Unit, isSortAsc: Boolean, onToggleSort: () -> Unit,
-    showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit
+    showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit,
+    isRefreshing: Boolean, onRefresh: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         NotesHeader(totalNotesCount > 5, showFolders, onToggleFolders, isSortAsc, onToggleSort, showFavoritesOnly, onToggleFavoritesFilter)
@@ -302,19 +314,29 @@ fun ListTabContent(
 
         if (notes.isEmpty()) EmptyNotesPlaceholder()
         else {
-            LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(notes) { note -> NoteListItem(note, { onNoteClick(note) }, { onDeleteRequest(note) }, { onToggleFavorite(note) }) }
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
+                    items(notes, key = { it.id }) { note ->
+                        NoteListItem(note, { onNoteClick(note) }, { onDeleteRequest(note) }, { onToggleFavorite(note) }, modifier = Modifier.animateItem())
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GridTabContent(
     notes: List<Note>, totalNotesCount: Int, folders: Set<Folder>, counts: Map<Folder, Int>,
     selectedFolder: Folder?, isSortAsc: Boolean, onToggleSort: () -> Unit, onFolderSelect: (Folder?) -> Unit,
     onNoteClick: (Note) -> Unit, onDeleteRequest: (Note) -> Unit, onToggleFavorite: (Note) -> Unit,
-    showFolders: Boolean, onToggleFolders: () -> Unit, showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit
+    showFolders: Boolean, onToggleFolders: () -> Unit, showFavoritesOnly: Boolean, onToggleFavoritesFilter: () -> Unit,
+    isRefreshing: Boolean, onRefresh: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         NotesHeader(totalNotesCount > 5, showFolders, onToggleFolders, isSortAsc, onToggleSort, showFavoritesOnly, onToggleFavoritesFilter)
@@ -329,8 +351,16 @@ fun GridTabContent(
 
         if (notes.isEmpty()) EmptyNotesPlaceholder()
         else {
-            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 160.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(notes) { note -> NoteGridItem(note, { onNoteClick(note) }, { onDeleteRequest(note) }, { onToggleFavorite(note) }) }
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 160.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
+                    items(notes, key = { it.id }) { note ->
+                        NoteGridItem(note, { onNoteClick(note) }, { onDeleteRequest(note) }, { onToggleFavorite(note) }, modifier = Modifier.animateItem())
+                    }
+                }
             }
         }
     }
@@ -373,51 +403,119 @@ fun NotesHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit) {
+fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit, modifier: Modifier = Modifier) {
     val dateString = if (DateUtils.isToday(note.updatedAt)) SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(note.updatedAt)) else SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(note.updatedAt))
-    Column(modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() }.padding(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Row {
-                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp).padding(end = 4.dp)) {
-                    Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error)
-                }
+    var showMenu by remember { mutableStateOf(false) }
+
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            if (dismissValue == SwipeToDismissBoxValue.EndToStart || dismissValue == SwipeToDismissBoxValue.StartToEnd) {
+                onDelete()
+                false
+            } else false
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        backgroundContent = {
+            val color by animateColorAsState(if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) MaterialTheme.colorScheme.errorContainer else Color.Transparent)
+            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)).background(color).padding(16.dp), contentAlignment = Alignment.Center) {
+                if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error)
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
-            Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+    ) {
+        Box {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = { showMenu = true }
+                    )
+                    .padding(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    if (note.isFavorite) Icon(Icons.Default.Star, "Обране", tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
+                    Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(text = { Text("Відкрити") }, onClick = { showMenu = false; onClick() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                DropdownMenuItem(text = { Text(if (note.isFavorite) "Видалити з обраного" else "Додати в обране") }, onClick = { showMenu = false; onToggleFavorite() }, leadingIcon = { Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null) })
+                DropdownMenuItem(text = { Text("Видалити", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onDelete() }, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) })
+            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit) {
+fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit, modifier: Modifier = Modifier) {
     val dateString = if (DateUtils.isToday(note.updatedAt)) SimpleDateFormat("HH:mm", Locale("uk", "UA")).format(Date(note.updatedAt)) else SimpleDateFormat("dd MMM", Locale("uk", "UA")).format(Date(note.updatedAt))
-    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onClick() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+    var showMenu by remember { mutableStateOf(false) }
+
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            if (dismissValue == SwipeToDismissBoxValue.EndToStart || dismissValue == SwipeToDismissBoxValue.StartToEnd) {
+                onDelete()
+                false
+            } else false
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.End) {
-            Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
-            Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-        }
-        Row {
-            IconButton(onClick = onToggleFavorite) {
-                Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Обране", tint = if (note.isFavorite) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline)
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        backgroundContent = {
+            val color by animateColorAsState(if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) MaterialTheme.colorScheme.errorContainer else Color.Transparent)
+            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(color).padding(16.dp), contentAlignment = Alignment.CenterEnd) {
+                if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error)
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error)
+        }
+    ) {
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = { showMenu = true }
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
+                    Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(text = { Text("Відкрити") }, onClick = { showMenu = false; onClick() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                DropdownMenuItem(text = { Text(if (note.isFavorite) "Видалити з обраного" else "Додати в обране") }, onClick = { showMenu = false; onToggleFavorite() }, leadingIcon = { Icon(if (note.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null) })
+                DropdownMenuItem(text = { Text("Видалити", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onDelete() }, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) })
             }
         }
     }
@@ -566,12 +664,11 @@ fun NoteEditorContent(formState: NoteFormState, viewModel: NoteDetailsViewModel,
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .imePadding() // Автоскрол при появі клавіатури!
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             horizontalAlignment = if (isTablet) Alignment.CenterHorizontally else Alignment.Start
         ) {
-
             Column(
                 modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -639,75 +736,107 @@ fun NoteEditorContent(formState: NoteFormState, viewModel: NoteDetailsViewModel,
                     }
                 }
 
-                Text("Додаткові параметри", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = formState.sourceUrl,
-                            onValueChange = { viewModel.updateState { s -> s.copy(sourceUrl = it) } },
-                            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateSourceUrl() },
-                            label = { Text("URL Джерела *") },
-                            placeholder = { Text("https://...") },
-                            isError = formState.sourceUrlError != null,
-                            supportingText = { formState.sourceUrlError?.let { Text(it) } },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
-                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = formState.estimatedHours,
-                            onValueChange = { viewModel.updateState { s -> s.copy(estimatedHours = it) } },
-                            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateEstimatedHours() },
-                            label = { Text("Оцінка часу (години) *") },
-                            isError = formState.estimatedHoursError != null,
-                            supportingText = { formState.estimatedHoursError?.let { Text(it) } },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }), // Приховує клавіатуру
-                            singleLine = true
-                        )
-                        var isDropdownExpanded by remember { mutableStateOf(false) }
-                        Box {
+
+                var isExpanded by remember { mutableStateOf(false) }
+
+                val headerBgColor by animateColorAsState(
+                    targetValue = if (isExpanded) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                )
+
+                val rotation by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isExpanded) 180f else 0f
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(headerBgColor)
+                        .clickable { isExpanded = !isExpanded }
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Додаткові параметри", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = "Розгорнути",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.graphicsLayer(rotationZ = rotation)
+                    )
+                }
+
+                Card(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+                    if (isExpanded) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedTextField(
-                                label = { Text("Вибрана папка *") },
-                                value = formState.folder?.displayName ?: "Оберіть папку *",
-                                onValueChange = {},
-                                modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateFolder() }.clickable { isDropdownExpanded = true },
-                                readOnly = true,
-                                enabled = false,
-                                isError = formState.folderError != null,
-                                supportingText = { formState.folderError?.let { Text(it) } },
-                                colors = TextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface, disabledContainerColor = Color.Transparent)
+                                value = formState.sourceUrl,
+                                onValueChange = { viewModel.updateState { s -> s.copy(sourceUrl = it) } },
+                                modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateSourceUrl() },
+                                label = { Text("URL Джерела *") },
+                                placeholder = { Text("https://...") },
+                                isError = formState.sourceUrlError != null,
+                                supportingText = { formState.sourceUrlError?.let { Text(it) } },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                                singleLine = true
                             )
-                            DropdownMenu(expanded = isDropdownExpanded, onDismissRequest = { isDropdownExpanded = false }) {
-                                Folder.entries.forEach { folder ->
-                                    DropdownMenuItem(text = { Text(folder.displayName) }, onClick = {
-                                        viewModel.updateState { s -> s.copy(folder = folder, folderError = null) }
-                                        isDropdownExpanded = false
-                                    })
+                            OutlinedTextField(
+                                value = formState.estimatedHours,
+                                onValueChange = { viewModel.updateState { s -> s.copy(estimatedHours = it) } },
+                                modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateEstimatedHours() },
+                                label = { Text("Оцінка часу (години) *") },
+                                isError = formState.estimatedHoursError != null,
+                                supportingText = { formState.estimatedHoursError?.let { Text(it) } },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                                singleLine = true
+                            )
+                            var isDropdownExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                OutlinedTextField(
+                                    label = { Text("Вибрана папка *") },
+                                    value = formState.folder?.displayName ?: "Оберіть папку *",
+                                    onValueChange = {},
+                                    modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) viewModel.validateFolder() }.clickable { isDropdownExpanded = true },
+                                    readOnly = true,
+                                    enabled = false,
+                                    isError = formState.folderError != null,
+                                    supportingText = { formState.folderError?.let { Text(it) } },
+                                    colors = TextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface, disabledContainerColor = Color.Transparent)
+                                )
+                                DropdownMenu(expanded = isDropdownExpanded, onDismissRequest = { isDropdownExpanded = false }) {
+                                    Folder.entries.forEach { folder ->
+                                        DropdownMenuItem(text = { Text(folder.displayName) }, onClick = {
+                                            viewModel.updateState { s -> s.copy(folder = folder, folderError = null) }
+                                            isDropdownExpanded = false
+                                        })
+                                    }
                                 }
                             }
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("Додати в обране")
-                            Switch(
-                                checked = formState.isFavorite,
-                                onCheckedChange = { isFav -> viewModel.updateState { it.copy(isFavorite = isFav) } }
-                            )
-                        }
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Пріоритет: ${formState.priority.roundToInt()}")
-                                Text("(1-10)", color = MaterialTheme.colorScheme.outline)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("Додати в обране")
+                                Switch(
+                                    checked = formState.isFavorite,
+                                    onCheckedChange = { isFav -> viewModel.updateState { it.copy(isFavorite = isFav) } }
+                                )
                             }
-                            Slider(
-                                value = formState.priority,
-                                onValueChange = { prio -> viewModel.updateState { it.copy(priority = prio) } },
-                                valueRange = 1f..10f,
-                                steps = 8
-                            )
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Пріоритет: ${formState.priority.roundToInt()}")
+                                    Text("(1-10)", color = MaterialTheme.colorScheme.outline)
+                                }
+                                Slider(
+                                    value = formState.priority,
+                                    onValueChange = { prio -> viewModel.updateState { it.copy(priority = prio) } },
+                                    valueRange = 1f..10f,
+                                    steps = 8
+                                )
+                            }
                         }
                     }
                 }
+
             }
         }
     }
