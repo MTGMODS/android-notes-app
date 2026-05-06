@@ -2,6 +2,7 @@ package com.mtg.notes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -11,6 +12,9 @@ class MainViewModel : ViewModel() {
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     val isOffline: StateFlow<Boolean> = repository.isOffline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -62,13 +66,22 @@ class MainViewModel : ViewModel() {
 
     init { refreshData() }
 
-    fun refreshData() {
+
+    fun refreshData(isSwipe: Boolean = false) {
         viewModelScope.launch {
-            _isLoading.value = true
+            if (isSwipe) {
+                _isRefreshing.value = true
+                delay(1000)
+            } else {
+                _isLoading.value = true
+            }
+
             val result = repository.refreshNotes()
             if (result.isFailure) {
                 _errorMessage.emit("Немає зв'язку з сервером. Показано офлайн-кеш.")
             }
+
+            _isRefreshing.value = false
             _isLoading.value = false
         }
     }
@@ -93,12 +106,12 @@ class MainViewModel : ViewModel() {
 
     fun deleteNote(note: Note) {
         viewModelScope.launch {
-            _isLoading.value = true
+            // _isLoading.value = true
             val result = repository.deleteNote(note)
             if (result.isFailure) {
                 _errorMessage.emit("Не вдалося видалити нотатку з сервера")
             }
-            _isLoading.value = false
+            // _isLoading.value = false
         }
     }
 
