@@ -45,6 +45,7 @@ import java.util.Locale
 import android.text.format.DateUtils
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
@@ -60,6 +61,10 @@ fun MainTabScreen(
     profileViewModel: ProfileViewModel = viewModel(),
     windowSizeClass: WindowSizeClass
 ) {
+
+    val isExpandedScreen = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+    var selectedNoteIdForPane by rememberSaveable { mutableStateOf<Int?>(null) }
+
     val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
     val isOffline by mainViewModel.isOffline.collectAsStateWithLifecycle()
     val notesToShow by mainViewModel.notesToShow.collectAsStateWithLifecycle()
@@ -80,13 +85,29 @@ fun MainTabScreen(
     var isFabExpanded by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<Note?>(null) }
     var showFolderDialog by remember { mutableStateOf(false) }
-    var showCreateNoteDialog by remember { mutableStateOf(false) } // ЗАВДАННЯ 4
 
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         mainViewModel.errorMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val handleNoteClick: (Int) -> Unit = { id ->
+        if (isExpandedScreen && currentTab != BottomTab.PROFILE) {
+            selectedNoteIdForPane = id
+        } else {
+            globalNavController.navigate(Screen.NoteDetails.createRoute(id))
+        }
+    }
+
+    val handleCreateNote = {
+        isFabExpanded = false
+        if (isExpandedScreen && currentTab != BottomTab.PROFILE) {
+            selectedNoteIdForPane = -1
+        } else {
+            globalNavController.navigate(Screen.NoteDetails.createRoute(-1))
         }
     }
 
@@ -109,61 +130,83 @@ fun MainTabScreen(
                     isExpanded = isFabExpanded,
                     onToggle = { isFabExpanded = !isFabExpanded },
                     onCreateFolder = { isFabExpanded = false; showFolderDialog = true },
-                    onCreateNote = { isFabExpanded = false; showCreateNoteDialog = true }
+                    onCreateNote = handleCreateNote
                 )
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize().statusBarsPadding()) {
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (isOffline) {
-                    OfflineBanner(onRetry = { mainViewModel.refreshData() })
+            Row(modifier = Modifier.fillMaxSize()) {
+
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    if (isOffline) {
+                        OfflineBanner(onRetry = { mainViewModel.refreshData() })
+                    }
+
+                    when (currentTab) {
+                        BottomTab.LIST -> {
+                            ListTabContent(
+                                notes = notesToShow, totalNotesCount = totalNotesCount, searchQuery = searchQuery,
+                                onQueryChange = { mainViewModel.updateSearchQuery(it) }, folders = activeFolders,
+                                counts = folderCounts, selectedFolder = selectedFolder,
+                                onFolderSelect = { mainViewModel.selectFolder(it) },
+                                onNoteClick = { handleNoteClick(it.id) },
+                                onDeleteRequest = { noteToDelete = it }, onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                                showFolders = showFolders, onToggleFolders = {
+                                    showFolders = !showFolders
+                                    if (!showFolders) mainViewModel.selectFolder(null)
+                                },
+                                isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
+                                showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                            )
+                        }
+                        BottomTab.GRID -> {
+                            GridTabContent(
+                                notes = notesToShow, totalNotesCount = totalNotesCount, folders = activeFolders,
+                                counts = folderCounts, selectedFolder = selectedFolder,
+                                isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
+                                onFolderSelect = { mainViewModel.selectFolder(it) },
+                                onNoteClick = { handleNoteClick(it.id) },
+                                onDeleteRequest = { noteToDelete = it }, onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                                showFolders = showFolders, onToggleFolders = {
+                                    showFolders = !showFolders
+                                    if (!showFolders) mainViewModel.selectFolder(null)
+                                },
+                                showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
+                            )
+                        }
+                        BottomTab.PROFILE -> {
+                            ProfileTab(
+                                userName = currentUserName.ifEmpty { userName }, onNameChange = { profileViewModel.updateName(it) },
+                                isDarkTheme = isDarkTheme, onToggleTheme = { profileViewModel.toggleTheme() },
+                                isSortAscending = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() }
+                            )
+                        }
+                    }
                 }
 
-                when (currentTab) {
-                    BottomTab.LIST -> {
-                        ListTabContent(
-                            notes = notesToShow, totalNotesCount = totalNotesCount, searchQuery = searchQuery,
-                            onQueryChange = { mainViewModel.updateSearchQuery(it) }, folders = activeFolders,
-                            counts = folderCounts, selectedFolder = selectedFolder,
-                            onFolderSelect = { mainViewModel.selectFolder(it) },
-                            onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                            onDeleteRequest = { noteToDelete = it }, onToggleFavorite = { mainViewModel.toggleFavorite(it) },
-                            showFolders = showFolders, onToggleFolders = {
-                                showFolders = !showFolders
-                                if (!showFolders) mainViewModel.selectFolder(null)
-                            },
-                            isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
-                            showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
-                        )
-                    }
-                    BottomTab.GRID -> {
-
-                        GridTabContent(
-                            notes = notesToShow, totalNotesCount = totalNotesCount, folders = activeFolders,
-                            counts = folderCounts, selectedFolder = selectedFolder,
-                            isSortAsc = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() },
-                            onFolderSelect = { mainViewModel.selectFolder(it) },
-                            onNoteClick = { globalNavController.navigate(Screen.NoteDetails.createRoute(it.id)) },
-                            onDeleteRequest = { noteToDelete = it }, onToggleFavorite = { mainViewModel.toggleFavorite(it) },
-                            showFolders = showFolders, onToggleFolders = {
-                                showFolders = !showFolders
-                                if (!showFolders) mainViewModel.selectFolder(null)
-                            },
-                            showFavoritesOnly = showFavoritesOnly, onToggleFavoritesFilter = { mainViewModel.toggleFavoritesOnly() }
-                        )
-                    }
-                    BottomTab.PROFILE -> {
-                        ProfileTab(
-                            userName = currentUserName.ifEmpty { userName }, onNameChange = { profileViewModel.updateName(it) },
-                            isDarkTheme = isDarkTheme, onToggleTheme = { profileViewModel.toggleTheme() },
-                            isSortAscending = isSortAscending, onToggleSort = { mainViewModel.toggleSortOrder() }
-                        )
+                if (isExpandedScreen && currentTab != BottomTab.PROFILE) {
+                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Box(modifier = Modifier.weight(1.5f).fillMaxHeight()) {
+                        if (selectedNoteIdForPane != null) {
+                            NoteEditorOverlay(
+                                noteId = selectedNoteIdForPane!!,
+                                onExit = { selectedNoteIdForPane = null },
+                                windowSizeClass = windowSizeClass
+                            )
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("📝", style = MaterialTheme.typography.displayMedium)
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text("Оберіть нотатку для перегляду", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
                     }
                 }
             }
-
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)).zIndex(10f).clickable(enabled = false) {},
@@ -173,17 +216,6 @@ fun MainTabScreen(
                 }
             }
         }
-    }
-
-
-    if (showCreateNoteDialog) {
-        CreateNoteDialog(
-            onDismiss = { showCreateNoteDialog = false },
-            onConfirm = { title, content ->
-                showCreateNoteDialog = false
-                mainViewModel.createNote(title, content, mainViewModel.selectedFolder.value) {}
-            }
-        )
     }
 
     if (noteToDelete != null) {
@@ -209,30 +241,6 @@ fun OfflineBanner(onRetry: () -> Unit) {
             Text("Повторити", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
         }
     }
-}
-
-
-@Composable
-fun CreateNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Створити нотатку") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Назва") }, singleLine = true)
-                OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Текст (опціонально)") }, modifier = Modifier.height(100.dp))
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(if (title.isBlank()) "Без назви" else title, content) }) { Text("Зберегти") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Скасувати") }
-        }
-    )
 }
 
 @Composable
@@ -510,8 +518,8 @@ fun FolderGridItem(name: String, count: Int, isSelected: Boolean, onClick: () ->
 }
 
 @Composable
-fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit) {
-    val viewModel: NoteDetailsViewModel = viewModel(factory = NoteDetailsViewModel.Factory(noteId))
+fun NoteEditorOverlay(noteId: Int, onExit: () -> Unit, windowSizeClass: WindowSizeClass? = null) {
+    val viewModel: NoteDetailsViewModel = viewModel(key = "note_details_$noteId", factory = NoteDetailsViewModel.Factory(noteId))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     when (val s = state) {
