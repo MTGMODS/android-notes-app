@@ -6,6 +6,7 @@ import com.mtg.notes.network.toNetworkNote
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 class NotesRepository(
     private val noteDao: NoteDao,
@@ -57,8 +58,17 @@ class NotesRepository(
 
     suspend fun deleteNote(note: Note): Result<Unit> {
         return try {
-            apiService.deleteNote(note.id.toString())
+            note.imagePath?.let { path ->
+                val file = File(path)
+                if (file.exists()) {file.delete() }
+            }
             noteDao.deleteNote(note)
+            
+            try {
+                apiService.deleteNote(note.id.toString())
+            } catch (e: Exception) {
+
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
