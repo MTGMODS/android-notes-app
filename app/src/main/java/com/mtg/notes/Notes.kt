@@ -22,7 +22,10 @@ data class Note(
     var updatedAt: Long = System.currentTimeMillis(),
     var sourceUrl: String = "",
     var estimatedHours: Int = 0,
-    var priority: Int = 1
+    var priority: Int = 1,
+    val imagePath: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 ) {
     fun getPreviewText(): String {
         return if (content.length > 25) content.substring(0, 25) + "..." else content
