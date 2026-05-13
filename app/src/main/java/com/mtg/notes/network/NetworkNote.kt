@@ -13,7 +13,10 @@ data class NetworkNote(
     @SerializedName("updatedAt") val updatedAt: Long?,
     @SerializedName("sourceUrl") val sourceUrl: String?,
     @SerializedName("estimatedHours") val estimatedHours: Int?,
-    @SerializedName("priority") val priority: Int?
+    @SerializedName("priority") val priority: Int?,
+    @SerializedName("imagePath") val imagePath: String?,
+    @SerializedName("latitude") val latitude: Double?,
+    @SerializedName("longitude") val longitude: Double?
 )
 
 
@@ -27,7 +30,10 @@ fun NetworkNote.toLocalNote(): Note {
         updatedAt = this.updatedAt ?: System.currentTimeMillis(),
         sourceUrl = this.sourceUrl ?: "",
         estimatedHours = this.estimatedHours ?: 0,
-        priority = this.priority ?: 1
+        priority = this.priority ?: 1,
+        imagePath = this.imagePath,
+        latitude = this.latitude,
+        longitude = this.longitude
     )
 }
 
@@ -40,6 +46,9 @@ fun Note.toNetworkNote(): NetworkNote {
         updatedAt = this.updatedAt,
         sourceUrl = this.sourceUrl,
         estimatedHours = this.estimatedHours,
-        priority = this.priority
+        priority = this.priority,
+        imagePath = this.imagePath,
+        latitude = this.latitude,
+        longitude = this.longitude
     )
 }
