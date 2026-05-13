@@ -669,7 +669,7 @@ fun NoteEditorContent(formState: NoteFormState, viewModel: NoteDetailsViewModel,
     val coroutineScope = rememberCoroutineScope()
 
     var currentPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var currentPhotoPath by remember { mutableStateOf<String?>(null) }
+    var currentPhotoPath by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     var hasCameraPermission by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
     var showCameraDenied by remember { mutableStateOf(false) }
 
