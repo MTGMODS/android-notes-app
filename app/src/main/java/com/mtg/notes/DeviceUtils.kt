@@ -45,7 +45,7 @@ object DeviceUtils {
     fun getUriForFile(context: Context, file: File): Uri {
         return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
-    
+
     fun openAppSettings(context: Context) {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.fromParts("package", context.packageName, null)
