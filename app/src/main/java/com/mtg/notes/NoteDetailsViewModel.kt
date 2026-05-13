@@ -12,24 +12,27 @@ import kotlinx.coroutines.launch
 
 data class NoteFormState(
     val title: String = "",
-    val titleError: String? = null,
     val content: String = "",
-    val sourceUrl: String = "",
-    val sourceUrlError: String? = null,
-    val estimatedHours: String = "",
-    val estimatedHoursError: String? = null,
     val folder: Folder? = null,
-    val folderError: String? = null,
     val isFavorite: Boolean = false,
-    val priority: Float = 1f
-) {
-    val isValid: Boolean
-        get() = title.length >= 3 && titleError == null &&
-                sourceUrl.isNotBlank() && sourceUrlError == null &&
-                estimatedHours.isNotBlank() && estimatedHoursError == null &&
-                folder != null && folderError == null
-}
+    val sourceUrl: String = "",
+    val estimatedHours: String = "",
+    val priority: Float = 1f,
 
+    val imagePath: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+
+    val titleError: String? = null,
+    val contentError: String? = null,
+    val folderError: String? = null,
+    val sourceUrlError: String? = null,
+    val estimatedHoursError: String? = null
+) {
+    val isValid: Boolean get() = title.isNotBlank() && content.isNotBlank() &&
+            folder != null && titleError == null && contentError == null &&
+            sourceUrlError == null && estimatedHoursError == null
+}
 sealed interface NoteDetailsState {
     object Loading : NoteDetailsState
     data class Error(val message: String) : NoteDetailsState
