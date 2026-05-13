@@ -63,7 +63,7 @@ class NotesRepository(
                 if (file.exists()) {file.delete() }
             }
             noteDao.deleteNote(note)
-            
+
             try {
                 apiService.deleteNote(note.id.toString())
             } catch (e: Exception) {
