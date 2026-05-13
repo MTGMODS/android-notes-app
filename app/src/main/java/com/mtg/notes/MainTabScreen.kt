@@ -1,5 +1,13 @@
 package com.mtg.notes
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
+import java.io.File
 import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
@@ -65,6 +73,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
@@ -657,6 +666,42 @@ fun NoteEditorContent(formState: NoteFormState, viewModel: NoteDetailsViewModel,
     val focusManager = LocalFocusManager.current
     val isTablet = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded
 
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var currentPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var currentPhotoPath by remember { mutableStateOf<String?>(null) }
+    var hasCameraPermission by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
+    var showCameraDenied by remember { mutableStateOf(false) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && currentPhotoPath != null) {
+            viewModel.updateState { it.copy(imagePath = currentPhotoPath) }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        hasCameraPermission = isGranted
+        showCameraDenied = !isGranted
+    }
+
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var showLocationDenied by remember { mutableStateOf(false) }
+    var locationLoading by remember { mutableStateOf(false) }
+    var locationError by remember { mutableStateOf<String?>(null) }
+    var locationAccuracy by remember { mutableStateOf<Float?>(null) }
+    var locationTime by remember { mutableStateOf<Long?>(null) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        hasLocationPermission = granted
+        showLocationDenied = !granted
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -835,6 +880,111 @@ fun NoteEditorContent(formState: NoteFormState, viewModel: NoteDetailsViewModel,
                                     valueRange = 1f..10f,
                                     steps = 8
                                 )
+                            }
+                        }
+                    }
+                }
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Фотографії", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+
+                        if (hasCameraPermission) {
+                            Button(onClick = {
+                                val file = DeviceUtils.createImageFile(context)
+                                currentPhotoPath = file.absolutePath
+                                currentPhotoUri = DeviceUtils.getUriForFile(context, file)
+                                takePictureLauncher.launch(currentPhotoUri!!)
+                            }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(if (formState.imagePath == null) "Зробити фото" else "Перезняти фото")
+                            }
+
+                            // Асинхронний показ фотографії через бібліотеку Coil
+                            formState.imagePath?.let { path ->
+                                val file = File(path)
+                                if (file.exists()) {
+                                    AsyncImage(
+                                        model = file,
+                                        contentDescription = "Фото нотатки",
+                                        modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                }
+                            }
+                        } else if (showCameraDenied) {
+                            Text("Доступ до камери відхилено. Ви не можете додавати фото.", color = MaterialTheme.colorScheme.error)
+                            Button(onClick = { DeviceUtils.openAppSettings(context) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Перейти в налаштування")
+                            }
+                        } else {
+                            Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Надати дозвіл на Камеру")
+                            }
+                        }
+                    }
+                }
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Геолокація", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        if (hasLocationPermission) {
+                            Button(onClick = {
+                                    locationLoading = true
+                                    locationError = null
+                                    coroutineScope.launch {
+                                        val loc = DeviceUtils.getCurrentLocation(context)
+                                        if (loc != null) {
+                                            viewModel.updateState { it.copy(latitude = loc.latitude, longitude = loc.longitude) }
+                                            locationAccuracy = loc.accuracy
+                                            locationTime = loc.time
+                                        } else {
+                                            locationError = "Не вдалося отримати локацію (перевірте, чи увімкнено GPS)"
+                                        }
+                                        locationLoading = false
+                                    }
+                                },
+                                enabled = !locationLoading,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (locationLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.LocationOn, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Оновити локацію")
+                                }
+                            }
+
+                            if (locationError != null) {
+                                Text(locationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
+
+                            if (formState.latitude != null && formState.longitude != null) {
+                                val distance = DeviceUtils.calculateDistanceToCHNU(formState.latitude!!, formState.longitude!!)
+                                val timeString = locationTime?.let { java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale("uk", "UA")).format(java.util.Date(it)) } ?: "Невідомо"
+
+                                Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(12.dp)) {
+                                    Text("Широта: ${formState.latitude}", style = MaterialTheme.typography.bodyMedium)
+                                    Text("Довгота: ${formState.longitude}", style = MaterialTheme.typography.bodyMedium)
+                                    Text("Точність: ±${locationAccuracy ?: "?"} метрів", style = MaterialTheme.typography.bodyMedium)
+                                    Text("Час оновлення: $timeString", style = MaterialTheme.typography.bodyMedium)
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                    Text("Відстань до ЧНУ ім. Ю. Федьковича:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                                    Text(String.format("%.2f км", distance / 1000f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else if (showLocationDenied) {
+                            Text("Доступ до геолокації відхилено.", color = MaterialTheme.colorScheme.error)
+                            Button(onClick = { DeviceUtils.openAppSettings(context) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Перейти в налаштування")
+                            }
+                        } else {
+                            Button(onClick = {
+                                locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Надати дозвіл на GPS")
                             }
                         }
                     }
