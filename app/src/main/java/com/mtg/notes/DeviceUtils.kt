@@ -8,6 +8,8 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.tasks.await
 import java.io.File
 import java.text.SimpleDateFormat
@@ -19,11 +21,24 @@ object DeviceUtils {
     private const val CHNU_LAT = 48.2970
     private const val CHNU_LON = 25.9228
 
+//    @SuppressLint("MissingPermission")
+//    suspend fun getCurrentLocation(context: Context): Location? {
+//        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+//        return try {
+//            fusedLocationClient.lastLocation.await()
+//        } catch (e: Exception) {
+//            null
+//        }
+//    }
+
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(context: Context): Location? {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         return try {
-            fusedLocationClient.lastLocation.await()
+            fusedLocationClient.getCurrentLocation(
+                Priority.PRIORITY_HIGH_ACCURACY,
+                CancellationTokenSource().token
+            ).await()
         } catch (e: Exception) {
             null
         }
