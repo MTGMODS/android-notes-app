@@ -66,7 +66,10 @@ class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
                         estimatedHours = note.estimatedHours.toString(),
                         folder = note.folder,
                         isFavorite = note.isFavorite,
-                        priority = note.priority.toFloat()
+                        priority = note.priority.toFloat(),
+                        imagePath = note.imagePath,
+                        latitude = note.latitude,
+                        longitude = note.longitude
                     )
                     _uiState.value = NoteDetailsState.Editing(initialState, note)
                 } else {
@@ -135,14 +138,20 @@ class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
                         val newNote = Note(
                             title = finalState.title, content = finalState.content, folder = finalState.folder,
                             sourceUrl = finalState.sourceUrl, estimatedHours = hours, priority = finalState.priority.toInt(),
-                            isFavorite = finalState.isFavorite
+                            isFavorite = finalState.isFavorite,
+                            imagePath = finalState.imagePath,
+                            latitude = finalState.latitude,
+                            longitude = finalState.longitude
                         )
                         repository.addNote(newNote)
                     } else {
                         val updatedNote = originalNote!!.copy(
                             title = finalState.title, content = finalState.content, folder = finalState.folder,
                             sourceUrl = finalState.sourceUrl, estimatedHours = hours, priority = finalState.priority.toInt(),
-                            isFavorite = finalState.isFavorite, updatedAt = System.currentTimeMillis()
+                            isFavorite = finalState.isFavorite, updatedAt = System.currentTimeMillis(),
+                            imagePath = finalState.imagePath,
+                            latitude = finalState.latitude,
+                            longitude = finalState.longitude
                         )
                         repository.updateNote(updatedNote)
                     }
