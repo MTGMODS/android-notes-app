@@ -36,7 +36,7 @@ class NoteDetailsViewModelTest {
     @Test
     fun `Позитивний сценарій збереження нової нотатки`() = runTest {
         val viewModel = NoteDetailsViewModel(noteId = -1, repository = mockRepository)
-        coEvery { mockRepository.addNote(any()) } returns Result.success(Unit)
+        coEvery { mockRepository.addNote(any()) } returns Result.success(mockk<Note>(relaxed = true))
 
         viewModel.updateState { it.copy(title = "Тест", content = "Опис", folder = Folder.WORK) }
         viewModel.saveNote()
