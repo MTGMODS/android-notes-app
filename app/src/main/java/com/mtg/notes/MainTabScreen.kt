@@ -446,6 +446,10 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
                     .height(160.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Нотатка: ${note.title}. ${note.getPreviewText()}." +
+                                if (note.isFavorite) " Додано в обране." else ""
+                    }
                     .combinedClickable(
                         onClick = onClick,
                         onLongClick = { showMenu = true }
@@ -454,7 +458,7 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                     Text(note.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    if (note.isFavorite) Icon(Icons.Default.Star, "Обране", tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
+                    if (note.isFavorite) Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(note.getPreviewText(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -471,7 +475,6 @@ fun NoteGridItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
         }
     }
 }
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit, modifier: Modifier = Modifier) {
@@ -504,6 +507,10 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Нотатка: ${note.title}. ${note.getPreviewText()}." +
+                                if (note.isFavorite) " Додано в обране." else ""
+                    }
                     .combinedClickable(
                         onClick = onClick,
                         onLongClick = { showMenu = true }
@@ -520,7 +527,7 @@ fun NoteListItem(note: Note, onClick: () -> Unit, onDelete: () -> Unit, onToggle
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(horizontalAlignment = Alignment.End) {
-                    if (note.isFavorite) Icon(Icons.Default.Star, "Обране", tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
+                    if (note.isFavorite) Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
                     Text(dateString, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.labelSmall)
                     Text(note.folder?.displayName ?: "", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                 }
