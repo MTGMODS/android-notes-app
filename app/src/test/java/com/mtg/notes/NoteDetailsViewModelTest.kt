@@ -15,8 +15,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
 class NoteDetailsViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
@@ -36,9 +39,19 @@ class NoteDetailsViewModelTest {
     @Test
     fun `Позитивний сценарій збереження нової нотатки`() = runTest {
         val viewModel = NoteDetailsViewModel(noteId = -1, repository = mockRepository)
-        coEvery { mockRepository.addNote(any()) } returns Result.success(mockk<Note>(relaxed = true))
+        advanceUntilIdle()
 
-        viewModel.updateState { it.copy(title = "Тест", content = "Опис", folder = Folder.WORK) }
+        coEvery { mockRepository.addNote(any()) } returns Result.success(mockk(relaxed = true))
+
+        viewModel.updateState {
+            it.copy(
+                title = "Тест",
+                content = "Опис",
+                folder = Folder.WORK,
+                sourceUrl = "https://google.com",
+                estimatedHours = "2"
+            )
+        }
         viewModel.saveNote()
         advanceUntilIdle()
 
@@ -48,9 +61,20 @@ class NoteDetailsViewModelTest {
     @Test
     fun `Негативний сценарій з порожнім заголовком`() = runTest {
         val viewModel = NoteDetailsViewModel(noteId = -1, repository = mockRepository)
-        viewModel.updateState { it.copy(title = "", content = "Опис", folder = Folder.WORK) }
+        advanceUntilIdle()
+
+        viewModel.updateState {
+            it.copy(
+                title = "",
+                content = "Опис",
+                folder = Folder.WORK,
+                sourceUrl = "https://google.com",
+                estimatedHours = "2"
+            )
+        }
 
         viewModel.saveNote()
+        advanceUntilIdle()
 
         val state = viewModel.uiState.value as NoteDetailsState.Editing
         assertEquals("Поле не може бути порожнім", state.formState.titleError)
