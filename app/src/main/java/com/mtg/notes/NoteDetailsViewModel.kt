@@ -40,8 +40,10 @@ sealed interface NoteDetailsState {
     object Saved : NoteDetailsState
 }
 
-class NoteDetailsViewModel(private val noteId: Int) : ViewModel() {
-    private val repository = globalNotesRepository
+class NoteDetailsViewModel(
+    private val noteId: Int,
+    private val repository: NotesRepository = globalNotesRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NoteDetailsState>(NoteDetailsState.Loading)
     val uiState: StateFlow<NoteDetailsState> = _uiState.asStateFlow()
