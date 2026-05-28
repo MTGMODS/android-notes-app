@@ -568,7 +568,7 @@ fun ProfileTab(userName: String, onNameChange: (String) -> Unit, isDarkTheme: Bo
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Інформація", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Назва: Notes App (Лаба 12)")
+                Text("Demo: Notes App")
             }
         }
     }
