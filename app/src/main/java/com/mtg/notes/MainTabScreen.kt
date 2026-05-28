@@ -74,6 +74,8 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 
 enum class BottomTab(val title: String, val icon: ImageVector) {
     LIST("Список", Icons.Default.List),
