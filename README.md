@@ -1,68 +1,178 @@
-# Notes App
+Notes App
 
-A modern, feature-rich Android application for note-taking and task management. Built entirely with **Kotlin** and **Jetpack Compose**, this app demonstrates a clean MVVM architecture, robust offline-first capabilities, hardware integrations (Camera & GPS), and test-driven development practices.
+Android application developed during a university Android Development course.
 
-## ✨ Key Features
+The project was built incrementally throughout a semester and consists of 13 laboratory assignments. Each new version extended the previous one, gradually introducing modern Android development technologies and practices.
 
-- **Advanced Note Management**: Create, edit, delete, and favorite notes. Includes support for tracking estimated hours, setting priority levels, and attaching external source URLs.
-- **Smart Organization**: Categorize notes into dedicated folders (`Study`, `Work`, `Personal`, `Ideas`). Includes global search and filtering (e.g., show favorites only, sort ascending/descending).
-- **Offline-First Architecture**: 
-  - Seamlessly works offline using a local **Room** database.
-  - Automatically synchronizes with a remote API (MockAPI via Retrofit) when the network is available.
-  - Custom mapping between network DTOs and local database entities.
-- **Hardware Integrations**:
-  - 📸 **Camera**: Take and securely attach photos directly to your notes using `FileProvider`.
-  - 📍 **Geolocation**: Tag notes with your current location using the `FusedLocationProviderClient`. Includes a custom feature to calculate and display the real-time distance to a specific landmark (e.g., Chernivtsi National University).
-- **Modern UI/UX**:
-  - Fully built with Jetpack Compose and **Material Design 3** (including dynamic color support).
-  - Reactive state management using `StateFlow` and `SharedFlow`.
-  - Toggleable List and Grid views.
-  - Dark and Light theme support.
-  - Adaptive layout for expanded screens (Tablet support using `WindowSizeClass`).
-- **Onboarding & Personalization**: Personalized greeting and user name setup stored securely via DataStore Preferences.
+Project Evolution
+Version	Features
+v1.0.0	Basic OOP demo
+v2.0.0	First Jetpack Compose interface
+v3.0.0	Compose collections and UI improvements
+v4.0.0	Reactive interface and dynamic content updates
+v5.0.0	Screen navigation, bottom navigation and tabs
+v6.0.0	MVVM architecture and ViewModels
+v7.0.0	Material Design 3 and Dark Theme
+v8.0.0	Room Database and DataStore
+v9.0.0	REST API integration and asynchronous networking
+v10.0.0	Form validation, keyboard handling and adaptive layouts
+v11.0.0	Animations, Swipe-to-Dismiss, Pull-to-Refresh and context menus
+v12.0.0	Camera integration and GPS functionality
+v13.0.0	Unit testing and UI testing
+Features
+Note Management
+Create notes
+Edit notes
+Delete notes
+Search notes
+Favorite notes
+Sort notes
+Filter favorites
+Organize notes into folders
+Note Properties
 
-## 🛠️ Tech Stack & Libraries
+Each note can contain:
 
-- **Language**: [Kotlin](https://kotlinlang.org/)
-- **UI Toolkit**: [Jetpack Compose](https://developer.android.com/jetpack/compose)
-- **Navigation**: [Jetpack Navigation Compose](https://developer.android.com/jetpack/compose/navigation)
-- **Architecture**: MVVM (Model-View-ViewModel) with Clean Architecture principles.
-- **Local Storage**: 
-  - [Room Database](https://developer.android.com/training/data-storage/room) (SQLite abstraction)
-  - [DataStore Preferences](https://developer.android.com/topic/libraries/architecture/datastore) (Theme, sorting, and user settings)
-- **Networking**: [Retrofit](https://square.github.io/retrofit/) & Gson (REST API integration)
-- **Concurrency & Reactive**: Kotlin Coroutines, `Flow`, `StateFlow`, `SharedFlow`
-- **Image Loading**: [Coil](https://coil-kt.github.io/coil/)
-- **Location Services**: Google Play Services Location API
-- **Testing**: JUnit 4, MockK, Robolectric, Jetpack Compose UI Testing
+Title
+Content
+Folder category
+Favorite status
+Source URL
+Estimated hours
+Priority level
+Attached photo
+GPS coordinates
+Available Folders
+Study
+Work
+Personal
+Ideas
+Offline Support
+Local Room database storage
+REST API synchronization
+Cached data available when offline
+Network status handling
+Device Features
+Camera
+Take photos directly from the application
+Attach photos to notes
+Local image storage using FileProvider
+GPS
+Get current device location
+Save coordinates to notes
+Display location information
+Calculate distance to Chernivtsi National University
+User Experience
+Material Design 3
+Dark Theme
+Light Theme
+Onboarding flow
+User profile settings
+Pull-to-Refresh
+Swipe-to-Dismiss
+Adaptive layouts for tablets and large screens
+Technology Stack
+Language
+Kotlin
+UI
+Jetpack Compose
+Material Design 3
+Navigation Compose
+Architecture
+MVVM
+Repository Pattern
+Storage
+Room Database
+DataStore Preferences
+Networking
+Retrofit
+Gson
+Concurrency
+Kotlin Coroutines
+Flow
+StateFlow
+SharedFlow
+Media
+Coil
+Android APIs
+Camera
+FileProvider
+Fused Location Provider
+Architecture Overview
+Jetpack Compose UI
+        │
+        ▼
+    ViewModel
+        │
+        ▼
+   Repository
+    ├─ Room Database
+    └─ Retrofit API
+Project Structure
+app/src
 
-## 🧪 Testing
+├── androidTest/
+│   └── UI tests
+│
+├── main/
+│   ├── AndroidManifest.xml
+│   │
+│   ├── java/com/mtg/notes/
+│   │   ├── DeviceUtils.kt
+│   │   ├── MainActivity.kt
+│   │   ├── MainTabScreen.kt
+│   │   ├── MainViewModel.kt
+│   │   ├── Navigation.kt
+│   │   ├── NoteDao.kt
+│   │   ├── NoteDetailsViewModel.kt
+│   │   ├── Notes.kt
+│   │   ├── NotesDatabase.kt
+│   │   ├── NotesRepository.kt
+│   │   ├── OnboardingScreens.kt
+│   │   ├── ProfileViewModel.kt
+│   │   ├── SettingsRepository.kt
+│   │   │
+│   │   ├── network/
+│   │   │   ├── ApiClient.kt
+│   │   │   ├── NetworkNote.kt
+│   │   │   ├── NetworkResult.kt
+│   │   │   └── NoteApiService.kt
+│   │   │
+│   │   └── ui/theme/
+│   │       ├── Color.kt
+│   │       ├── Theme.kt
+│   │       └── Type.kt
+│   │
+│   └── res/
+│
+└── test/
+    └── Unit tests
+Testing
+Unit Testing
 
-The application includes a comprehensive testing suite to ensure reliability and correct behavior:
-- **Unit Tests**: ViewModels (e.g., `NoteDetailsViewModel`) are tested using **JUnit 4** and **Robolectric**. Dependencies like the `NotesRepository` are mocked using **MockK** to isolate and verify business logic, state updates, and form validation rules.
-- **UI Tests**: Automated UI tests utilize the **Jetpack Compose Testing** library to verify user flows, such as navigating the app, inputting text, and successfully creating new notes.
+Implemented using:
 
-## 🚀 Getting Started
+JUnit 4
+MockK
+Robolectric
+Coroutines Test
 
-### Prerequisites
-- Android Studio (Latest version recommended)
-- Minimum SDK: 24 (Android 7.0)
-- Target SDK: 36
+Covered scenarios:
 
-### Installation & Running
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
-   ```
-2. Open the project in Android Studio.
-3. Sync the Gradle files.
-4. Build and run the app on an emulator or a physical device.
+Successful note creation
+Form validation
+Loading a non-existing note
+UI Testing
 
-Note: Ensure you grant the necessary Camera and Location permissions when prompted in the app to test all hardware-related features.
+Implemented using:
 
----
+Jetpack Compose Testing
 
-## 📂 Architecture Overview
-The application strictly follows the recommended Android Architecture guidelines:
-- UI Layer: Composed of Jetpack Compose screens and ViewModels. State is exposed to the UI via StateFlow, ensuring a unidirectional data flow (UDF).
-- Data Layer: The NotesRepository acts as the single source of truth. It manages data fetching and synchronization between the local cache (NoteDao via Room) and the remote data source (NoteApiService via Retrofit), handling network failures gracefully. Data mapping is handled cleanly between NetworkNote and local Note models.
+Covered scenarios:
+
+Creating a note through the user interface
+Requirements
+Android 7.0+ (API 24+)
+Internet connection (for API synchronization)
+Camera permission (optional)
+Location permission (optional)
