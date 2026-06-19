@@ -1,7 +1,19 @@
-# Notes App
+# Smart Notes: Tasks & Ideas
 
-Android application developed during a university Android Development course.
-The project was built incrementally throughout a semester and consists of 13 laboratory assignments. Each new version extended the previous one, gradually introducing modern Android development technologies and practices.
+## 🎓 Academic Project
+
+This application was developed as a semester-long Android Development project. The repository preserves the complete evolution of the application through 13 laboratory assignments, demonstrating the gradual adoption of modern Android development technologies and practices.
+
+The project was built incrementally throughout a semester and consists of 13 laboratory assignments. Each version introduced new Android concepts while extending the functionality of the previous release.
+
+The final application demonstrates modern Android development practices including Jetpack Compose, MVVM architecture, Room Database, Retrofit networking, adaptive layouts, device integrations, and automated testing.
+
+## 📸 Screenshots
+<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/7e2d85e4-cc6a-4d38-9389-a8c6401d69ba" />
+<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/5b000212-9f56-460a-8256-f0c9c09d7387" />
+<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/47214a79-1ce7-4089-a018-1e695e73ad9c" />
+
+
 
 ## 📈 Project Evolution
 
@@ -77,16 +89,22 @@ Each note can contain:
 - Swipe-to-Dismiss
 - Adaptive layouts for tablets and large screens
 
-## 🛠 Technology Stack
+## 🛠 Tech Stack
 
-- **Language:** Kotlin
-- **UI:** Jetpack Compose, Material Design 3, Navigation Compose
-- **Architecture:** MVVM, Repository Pattern
-- **Storage:** Room Database, DataStore Preferences
-- **Networking:** Retrofit, Gson
-- **Concurrency:** Kotlin Coroutines, Flow, StateFlow, SharedFlow
-- **Media:** Coil
-- **Android APIs:** Camera, FileProvider, Fused Location Provider
+- Kotlin
+- Jetpack Compose
+- Material Design 3
+- Navigation Compose
+- MVVM
+- Room Database
+- DataStore
+- Retrofit
+- Gson
+- Kotlin Coroutines
+- Flow / StateFlow / SharedFlow
+- Coil
+- Camera API
+- Fused Location Provider
 
 ## 🏗 Architecture Overview
 
@@ -165,4 +183,4 @@ Implemented using: **Jetpack Compose Testing**
 - Android 7.0+ (API 24+)
 - Camera permission (optional)
 - Location permission (optional)
-- Internet connection (required for API synchronization)
+- Internet connection (optional, required for synchronization with remote API)
